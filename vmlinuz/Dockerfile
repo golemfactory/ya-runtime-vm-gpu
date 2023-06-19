@@ -1,12 +1,12 @@
-FROM ubuntu:focal-20220801
+ARG LINUX_VER=5.10.29
+ARG NVIDIA_VER=525.85.05
 
-ENV TZ=Europe/Paris
+FROM ubuntu:focal-20230605 as linux
 
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+ARG DEBIAN_FRONTEND=noninteractive
 
-COPY config-virt /usr/src/config-virt
-
-RUN apt-get update && apt-get install -y \
+RUN apt-get update \ 
+	&& apt-get install -y \
 	wget \
 	kmod \
 	gcc \
@@ -20,17 +20,33 @@ RUN apt-get update && apt-get install -y \
 	pkg-config \
 	&& rm -rf /var/lib/apt/lists/*
 
-RUN cd /usr/src \
-	&& wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.10.29.tar.xz \
-	&& tar xavf linux-5.10.29.tar.xz \
-	&& cd linux-5.10.29 \
-	&& mv /usr/src/config-virt /usr/src/linux-5.10.29/.config \
+FROM linux as linux_builder
+
+ARG LINUX_VER
+ARG NVIDIA_VER
+
+WORKDIR /usr/src
+
+RUN wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-${LINUX_VER}.tar.xz \
+	&& tar xavf linux-${LINUX_VER}.tar.xz \
+	&& wget https://download.nvidia.com/XFree86/Linux-x86_64/${NVIDIA_VER}/NVIDIA-Linux-x86_64-${NVIDIA_VER}-no-compat32.run \
+	&& chmod +x NVIDIA-Linux-x86_64-${NVIDIA_VER}-no-compat32.run
+
+FROM linux_builder
+
+ARG LINUX_VER
+ARG NVIDIA_VER
+
+WORKDIR /usr/src
+
+COPY config-virt config-virt
+
+RUN mv config-virt linux-${LINUX_VER}/.config \ 
+	&& cd linux-${LINUX_VER} \
 	&& make olddefconfig \
 	&& make -j $(($(nproc --all)-1)) \
 	&& make install \
 	&& make modules_install \
-	&& cd /usr/src \
-	&& wget https://download.nvidia.com/XFree86/Linux-x86_64/525.85.05/NVIDIA-Linux-x86_64-525.85.05-no-compat32.run \
-	&& chmod +x NVIDIA-Linux-x86_64-525.85.05-no-compat32.run \
-	&& ./NVIDIA-Linux-x86_64-525.85.05-no-compat32.run -k 5.10.29 -s --kernel-source-path=/usr/src/linux-5.10.29 \
+	&& cd .. \
+	&& ./NVIDIA-Linux-x86_64-${NVIDIA_VER}-no-compat32.run -k ${LINUX_VER} -s --kernel-source-path=/usr/src/linux-${LINUX_VER} \
 	&& rm -rf /usr/src/*
