@@ -124,7 +124,7 @@ jobs:
           sed -i 's/VM_VERSION/${TAG_NAME}/' ${TARGET_DIR}/${VM_NAME}.json
 
           mkdir -p dist
-          (cd build && tar czvf dist/"${TOP_DIR_NAME}.tar.gz" "${TOP_DIR_NAME}")
+          (cd build && tar czvf ../dist/"${TOP_DIR_NAME}.tar.gz" "${TOP_DIR_NAME}")
 
       - name: Release
         uses: softprops/action-gh-release@v1
