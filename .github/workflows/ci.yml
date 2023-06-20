@@ -1,0 +1,127 @@
+name: CI
+on:
+  push:
+    tags:
+      - v*
+      - pre-rel-*
+
+env:
+  runtime-vm_repository: pwalski/ya-runtime-vm
+  runtime-vm_version: pre-rel-v0.3.4-rc3
+  self-test-img_repository: golemfactory/ya-self-test-img
+  self-test-img_tag: pre-rel-v0.1.0
+  vm_name: ya-runtime-vm-gpu
+  os_name: linux
+
+jobs:
+  build-vmlinuz:
+    name: Build vmlinuz
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install Musl
+        run: sudo apt-get install -y musl-tools musl
+      - uses: actions/checkout@v1
+      - name: Make vmlinuz
+        run: |
+          musl-gcc -v
+          git submodule init
+          git submodule update
+          cd vmlinuz
+          make
+      - uses: actions/upload-artifact@v2
+        with:
+          name: vmlinuz
+          path: |
+            vmlinuz/vmlinuz-virt
+    
+  build-qemu:
+    name: Build qemu
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install Musl
+        run: sudo apt-get install -y musl-tools musl
+      - uses: actions/checkout@v1
+      - name: Make qemu
+        run: |
+          musl-gcc -v
+          git submodule init
+          git submodule update
+          cd qemu
+          make
+      - uses: actions/upload-artifact@v2
+        with:
+          name: qemu
+          path: |
+            qemu/build/*
+
+  release:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download ya-runtime-vm
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: ${{ env.runtime-vm_repository }}
+          tag: ${{ env.runtime-vm_version }}
+          fileName: ya-runtime-vm-${{ env.os_name }}-${{ env.runtime-vm_version }}.tar.gz
+          extract: true
+          out-file-path: .
+          tarBall: false
+          zipBall: false
+          
+      - name: Download self-test image
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: ${{ env.self-test-img_repository }}
+          tag: ${{ env.self-test-img_tag }}
+          fileName: self-test.gvmi
+          out-file-path: .
+          tarBall: false
+          zipBall: false
+          
+      - uses: actions/download-artifact@v2
+        with:
+          name: qemu
+          path: qemu/build/
+          
+      - uses: actions/download-artifact@v2
+        with:
+          name: vmlinuz
+          path: vmlinuz/
+          
+      - name: Pack
+        id: pack
+        shell: bash
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          OS_NAME: ${{ env.os_name }}
+          VM_NAME: ${{ env.vm_name }}
+        run: |
+          TAG_NAME="${GITHUB_REF##*/}"
+          TOP_DIR_NAME="${VM_NAME}-${OS_NAME}-${TAG_NAME}"
+          TARGET_DIR=build/${TOP_DIR_NAME}/${VM_NAME}
+
+          mkdir -p ${TARGET_DIR}/runtime
+          SRC_DIR=ya-runtime-vm-linux-${runtime-vm_version}/ya-runtime-vm
+          rsync --exclude='runtime/vmrt' --exclude='runtime/self-test.gvmi' --exclude='runtime/vmlinuz-virt' ${SRC_DIR}/runtime ${TARGET_DIR}/runtime
+          cp ${SRC_DIR}/ya-runtime-vm ${TARGET_DIR}/${VM_NAME}
+          strip $TARGET_DIR
+          set -x
+
+          cp self-test.gvmi         $TARGET_DIR/runtime/
+          cp vmlinuz/vmlinuz-virt   $TARGET_DIR/runtime/
+          cp qemu/build/*           $TARGET_DIR/runtime/
+
+          cp conf/${VM_NAME}.json ${TOP_DIR_NAME}
+          sed -i 's/VM_VERSION/${TAG_NAME}/' ${TOP_DIR_NAME}/${VM_NAME}.json
+
+          mkdir -p dist
+          (cd build && tar czvf dist/"${TOP_DIR_NAME}.tar.gz" "${TOP_DIR_NAME}")
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+          files: dist/*
+          prerelease: ${{ !startsWith(github.ref, '/refs/tags/v[0-9]+') }}
