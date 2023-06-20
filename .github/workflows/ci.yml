@@ -120,8 +120,8 @@ jobs:
           cp vmlinuz/vmlinuz-virt   $TARGET_DIR/runtime/
           cp qemu/build/*           $TARGET_DIR/runtime/
 
-          cp conf/${VM_NAME}.json ${TOP_DIR_NAME}
-          sed -i 's/VM_VERSION/${TAG_NAME}/' ${TOP_DIR_NAME}/${VM_NAME}.json
+          cp conf/${VM_NAME}.json ${TARGET_DIR}/
+          sed -i 's/VM_VERSION/${TAG_NAME}/' ${TARGET_DIR}/${VM_NAME}.json
 
           mkdir -p dist
           (cd build && tar czvf dist/"${TOP_DIR_NAME}.tar.gz" "${TOP_DIR_NAME}")
