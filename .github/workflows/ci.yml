@@ -102,6 +102,7 @@ jobs:
         shell: bash
         env:
           GITHUB_REF: ${{ github.ref }}
+          RUNTIME_VM_VERSION: ${{ env.runtime-vm_version }}
           OS_NAME: ${{ env.os_name }}
           VM_NAME: ${{ env.vm_name }}
         run: |
@@ -110,7 +111,7 @@ jobs:
           TARGET_DIR=build/${TOP_DIR_NAME}/${VM_NAME}
 
           mkdir -p ${TARGET_DIR}/runtime
-          SRC_DIR=ya-runtime-vm-linux-${runtime-vm_version}/ya-runtime-vm
+          SRC_DIR=ya-runtime-vm-${OSNAME}-${RUNTIME_VM_VERSION}/ya-runtime-vm
           rsync --exclude='runtime/vmrt' --exclude='runtime/self-test.gvmi' --exclude='runtime/vmlinuz-virt' ${SRC_DIR}/runtime ${TARGET_DIR}/runtime
           cp ${SRC_DIR}/ya-runtime-vm ${TARGET_DIR}/${VM_NAME}
           strip $TARGET_DIR
