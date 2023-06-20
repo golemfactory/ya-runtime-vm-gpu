@@ -111,9 +111,9 @@ jobs:
           TARGET_DIR=build/${TOP_DIR_NAME}/${VM_NAME}
           set -x
 
-          mkdir -p ${TARGET_DIR}/runtime
+          mkdir -p ${TARGET_DIR}
           SRC_DIR=ya-runtime-vm-${OS_NAME}-${RUNTIME_VM_VERSION}/ya-runtime-vm
-          rsync -av --exclude='vmrt' --exclude='self-test.gvmi' --exclude='vmlinuz-virt' ${SRC_DIR}/runtime ${TARGET_DIR}/runtime
+          rsync -av --exclude='vmrt' --exclude='self-test.gvmi' --exclude='vmlinuz-virt' ${SRC_DIR}/runtime ${TARGET_DIR}
           cp ${SRC_DIR}/ya-runtime-vm ${TARGET_DIR}/${VM_NAME}
 
           cp self-test.gvmi         $TARGET_DIR/runtime/
