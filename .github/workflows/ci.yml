@@ -122,6 +122,7 @@ jobs:
 
           RUNTIME_DESC=build/${TOP_DIR_NAME}/${VM_NAME}.json
           VERSION=${TAG_NAME#v}
+          VERSION=${VERSION#pre-rel-v}
           cp conf/${VM_NAME}.json         ${RUNTIME_DESC}
           sed -i "s/VERSION/${VERSION}/"  ${RUNTIME_DESC}
 
