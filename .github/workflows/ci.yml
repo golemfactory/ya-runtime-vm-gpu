@@ -14,25 +14,25 @@ env:
   os_name: linux
 
 jobs:
-  build-vmlinuz:
-    name: Build vmlinuz
+  build-golem_nvidia_base:
+    name: Build golem_nvidia_base
     runs-on: ubuntu-20.04
     steps:
       - name: Install Musl
         run: sudo apt-get install -y musl-tools musl
       - uses: actions/checkout@v1
-      - name: Make vmlinuz
+      - name: Make golem_nvidia_base
         run: |
           musl-gcc -v
           git submodule init
           git submodule update
-          cd vmlinuz
+          cd golem_nvidia_base
           make
       - uses: actions/upload-artifact@v2
         with:
-          name: vmlinuz
+          name: golem_nvidia_base
           path: |
-            vmlinuz/vmlinuz-virt
+            golem_nvidia_base/vmlinuz
     
   build-qemu:
     name: Build qemu
@@ -57,7 +57,7 @@ jobs:
   release:
     name: Release
     needs:
-      - build-vmlinuz
+      - build-golem_nvidia_base
       - build-qemu
     runs-on: ubuntu-20.04
     steps:
@@ -91,8 +91,8 @@ jobs:
           
       - uses: actions/download-artifact@v2
         with:
-          name: vmlinuz
-          path: vmlinuz/
+          name: golem_nvidia_base
+          path: golem_nvidia_base/
           
       - name: Pack
         id: pack
@@ -110,11 +110,11 @@ jobs:
 
           mkdir -p ${TARGET_DIR}
           SRC_DIR=ya-runtime-vm-${OS_NAME}-${RUNTIME_VM_VERSION}/ya-runtime-vm
-          rsync -av --exclude='vmrt' --exclude='self-test.gvmi' --exclude='vmlinuz-virt' ${SRC_DIR}/runtime ${TARGET_DIR}
+          rsync -av --exclude='vmrt' --exclude='self-test.gvmi' --exclude='vmlinuz' ${SRC_DIR}/runtime ${TARGET_DIR}
           cp ${SRC_DIR}/ya-runtime-vm ${TARGET_DIR}/${VM_NAME}
 
           cp self-test.gvmi         $TARGET_DIR/runtime/
-          cp vmlinuz/vmlinuz-virt   $TARGET_DIR/runtime/
+          cp golem_nvidia_base/vmlinuz   $TARGET_DIR/runtime/
           cp qemu/build/*           $TARGET_DIR/runtime/
 
           chmod +x ${TARGET_DIR}/runtime/vmrt
