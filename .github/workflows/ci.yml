@@ -38,8 +38,8 @@ jobs:
           TAG=${GITHUB_REF##*/}
           VERSION=${TAG#v}
           VERSION=${VERSION#pre-rel-v}
-          echo ::set-output name=TAG::${TAG}
-          echo ::set-output name=VERSION::${VERSION}
+          echo "TAG=${TAG}" >> $GITHUB_OUTPUT
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Build and push
         uses: docker/build-push-action@v4
@@ -47,8 +47,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.vm_name }}:${{ steps.tag_name.outputs.VERSION }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.vm_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'latest' || 'stable' }}
+            ${{ env.vm_name }}:${{ steps.tag_name.outputs.VERSION }}
+            ${{ env.vm_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'latest' || 'stable' }}
 
       - name: Copy
         run: |
