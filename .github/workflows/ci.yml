@@ -13,6 +13,7 @@ env:
   vm_name: ya-runtime-vm-nvidia
   os_name: linux
   organisation: pwalski
+  docker-img_name: golem_nvidia_base
 
 jobs:
   build-golem_nvidia_base:
@@ -48,9 +49,9 @@ jobs:
           context: ./golem_nvidia_base/
           push: true
           tags: |
-            ${{ env.organisation }}/${{ env.vm_name }}:${{ steps.tag_name.outputs.VERSION }}
-            ${{ env.organisation }}/${{ env.vm_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'beta' || 'stable' }}
-            ${{ env.organisation }}/${{ env.vm_name }}:latest
+            ${{ env.organisation }}/${{ env.docker-img_name }}:${{ steps.tag_name.outputs.VERSION }}
+            ${{ env.organisation }}/${{ env.docker-img_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'beta' || 'stable' }}
+            ${{ env.organisation }}/${{ env.docker-img_name }}:latest
 
       - name: Copy
         run: |
