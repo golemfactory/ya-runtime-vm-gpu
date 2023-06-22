@@ -1,8 +1,12 @@
 all: vmlinuz-virt
 
-vmlinuz-virt: Dockerfile
-	docker build -t golemfactory/golem_nvidia_base .
+build: build-img vmlinuz-virt
+
+vmlinuz-virt:
 	$(SHELL) copy_img golemfactory/golem_nvidia_base /boot/vmlinuz-5.10.29 ./vmlinuz-virt
+
+build-img: Dockerfile 
+	docker build -t golemfactory/golem_nvidia_base .
 
 clean:
 	rm -f vmlinuz-virt > /dev/null 2>&1

@@ -17,30 +17,62 @@ jobs:
   build-golem_nvidia_base:
     name: Build golem_nvidia_base
     runs-on: ubuntu-20.04
+
     steps:
       - name: Install Musl
         run: sudo apt-get install -y musl-tools musl
+
       - uses: actions/checkout@v1
-      - name: Make golem_nvidia_base
+        with:
+          submodules: "recursive"
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Tag name and version
+        id: tag_name
         run: |
-          musl-gcc -v
-          git submodule init
-          git submodule update
+          TAG=${GITHUB_REF##*/}
+          VERSION=${TAG#v}
+          VERSION=${VERSION#pre-rel-v}
+          echo ::set-output name=TAG::${TAG}
+          echo ::set-output name=VERSION::${VERSION}
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.vm_name }}:${{ steps.tag_name.outputs.VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.vm_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'latest' || 'stable' }}
+
+      - name: Copy
+        run: |
           cd golem_nvidia_base
-          make
+          make vmlinuz-virt
+
       - uses: actions/upload-artifact@v2
         with:
           name: golem_nvidia_base
           path: |
             golem_nvidia_base/vmlinuz
-    
+
   build-qemu:
     name: Build qemu
     runs-on: ubuntu-20.04
+
     steps:
       - name: Install Musl
         run: sudo apt-get install -y musl-tools musl
+
       - uses: actions/checkout@v1
+        with:
+          submodules: "recursive"
+
       - name: Make qemu
         run: |
           musl-gcc -v
@@ -48,6 +80,7 @@ jobs:
           git submodule update
           cd qemu
           make
+
       - uses: actions/upload-artifact@v2
         with:
           name: qemu
@@ -60,6 +93,7 @@ jobs:
       - build-golem_nvidia_base
       - build-qemu
     runs-on: ubuntu-20.04
+
     steps:
       - uses: actions/checkout@v3
 
@@ -73,7 +107,7 @@ jobs:
           out-file-path: .
           tarBall: false
           zipBall: false
-          
+
       - name: Download self-test image
         uses: robinraju/release-downloader@v1.8
         with:
@@ -83,17 +117,17 @@ jobs:
           out-file-path: .
           tarBall: false
           zipBall: false
-          
+
       - uses: actions/download-artifact@v2
         with:
           name: qemu
           path: qemu/build/
-          
+
       - uses: actions/download-artifact@v2
         with:
           name: golem_nvidia_base
           path: golem_nvidia_base/
-          
+
       - name: Pack
         id: pack
         shell: bash
