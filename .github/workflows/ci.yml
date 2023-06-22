@@ -10,7 +10,7 @@ env:
   runtime-vm_version: pre-rel-v0.3.4-rc3
   self-test-img_repository: golemfactory/ya-self-test-img
   self-test-img_tag: pre-rel-v0.1.0
-  vm_name: ya-runtime-vm-gpu
+  vm_name: ya-runtime-vm-nvidia
   os_name: linux
 
 jobs:

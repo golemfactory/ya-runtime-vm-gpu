@@ -1,10 +1,10 @@
 [
     {
-      "name": "vm-gpu",
+      "name": "vm-nvidia",
       "version": "VERSION",
       "supervisor-path": "exe-unit",
-      "runtime-path": "ya-runtime-vm-gpu/ya-runtime-vm-gpu",
-      "description": "vm gpu runtime",
+      "runtime-path": "ya-runtime-vm-nvidia/ya-runtime-vm-nvidia",
+      "description": "vm nvidia runtime",
       "extra-args": [ "--cap-handoff" ]
     }
   ]
