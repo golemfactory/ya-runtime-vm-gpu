@@ -61,7 +61,7 @@ jobs:
         with:
           name: golem_nvidia_base
           path: |
-            golem_nvidia_base/vmlinuz
+            golem_nvidia_base/vmlinuz-virt
 
   build-qemu:
     name: Build qemu
@@ -146,11 +146,11 @@ jobs:
 
           mkdir -p ${TARGET_DIR}
           SRC_DIR=ya-runtime-vm-${OS_NAME}-${RUNTIME_VM_VERSION}/ya-runtime-vm
-          rsync -av --exclude='vmrt' --exclude='self-test.gvmi' --exclude='vmlinuz' ${SRC_DIR}/runtime ${TARGET_DIR}
+          rsync -av --exclude='vmrt' --exclude='self-test.gvmi' --exclude='vmlinuz-virt' ${SRC_DIR}/runtime ${TARGET_DIR}
           cp ${SRC_DIR}/ya-runtime-vm ${TARGET_DIR}/${VM_NAME}
 
           cp self-test.gvmi         $TARGET_DIR/runtime/
-          cp golem_nvidia_base/vmlinuz   $TARGET_DIR/runtime/
+          cp golem_nvidia_base/vmlinuz-virt   $TARGET_DIR/runtime/
           cp qemu/build/*           $TARGET_DIR/runtime/
 
           chmod +x ${TARGET_DIR}/runtime/vmrt
