@@ -1,8 +1,6 @@
 FROM ubuntu:focal-20220801
 
-ENV TZ=Europe/Paris
-
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+ARG DEBIAN_FRONTEND=noninteractive
 
 COPY config-virt /usr/src/config-virt
 
