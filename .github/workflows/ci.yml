@@ -7,9 +7,9 @@ on:
 
 env:
   runtime-vm_repository: pwalski/ya-runtime-vm
-  runtime-vm_version: pre-rel-v0.3.4-rc3
+  runtime-vm_version: pre-rel-v0.3.4-rc7
   self-test-img_repository: golemfactory/ya-self-test-img
-  self-test-img_tag: pre-rel-v0.1.0
+  self-test-img_tag: pre-rel-v0.1.0_RC3_file_output
   vm_name: ya-runtime-vm-nvidia
   os_name: linux
   organisation: pwalski
@@ -116,7 +116,7 @@ jobs:
         with:
           repository: ${{ env.self-test-img_repository }}
           tag: ${{ env.self-test-img_tag }}
-          fileName: self-test.gvmi
+          fileName: self-test-gpu.gvmi
           out-file-path: .
           tarBall: false
           zipBall: false
@@ -150,7 +150,7 @@ jobs:
           rsync -av --exclude='vmrt' --exclude='self-test.gvmi' --exclude='vmlinuz-virt' ${SRC_DIR}/runtime ${TARGET_DIR}
           cp ${SRC_DIR}/ya-runtime-vm ${TARGET_DIR}/${VM_NAME}
 
-          cp self-test.gvmi         $TARGET_DIR/runtime/
+          cp self-test-gpu.gvmi         $TARGET_DIR/runtime/self-test.gvmi 
           cp golem_nvidia_base/vmlinuz-virt   $TARGET_DIR/runtime/
           cp qemu/build/*           $TARGET_DIR/runtime/
 
