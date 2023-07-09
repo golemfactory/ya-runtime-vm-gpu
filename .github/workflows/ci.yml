@@ -7,9 +7,9 @@ on:
 
 env:
   runtime-vm_repository: pwalski/ya-runtime-vm
-  runtime-vm_version: pre-rel-v0.3.4-rc11
+  runtime-vm_version: pre-rel-v0.3.4-rc12
   self-test-img_repository: golemfactory/ya-self-test-img
-  self-test-img_tag: pre-rel-v0.1.0_RC3_file_output
+  self-test-img_tag: pre-rel-v0.1.0_RC4_xorg
   vm_name: ya-runtime-vm-nvidia
   os_name: linux
   organisation: pwalski
