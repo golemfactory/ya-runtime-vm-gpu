@@ -3,10 +3,14 @@
 
 set -u
 
-# YA_INSTALLER_GPU_VER=${YA_INSTALLER_GPU_VER:-pre-rel-v0.1.0-rc23}
-YA_INSTALLER_GPU_VER=${YA_INSTALLER_GPU_VER:-v0.3.0}
-# YA_INSTALLER_GPU_NAME=${YA_INSTALLER_GPU_NAME:-ya-runtime-vm-nvidia}
-YA_INSTALLER_GPU_NAME=${YA_INSTALLER_GPU_NAME:-ya-runtime-vm}
+# YA_INSTALLER_RUNTIME_VER=${YA_INSTALLER_RUNTIME_VER:-pre-rel-v0.1.0-rc23}
+YA_INSTALLER_RUNTIME_VER=${YA_INSTALLER_RUNTIME_VER:-v0.3.0}
+# YA_INSTALLER_RUNTIME_NAME="ya-runtime-vm-nvidia"
+YA_INSTALLER_RUNTIME_NAME="ya-runtime-vm"
+# YA_INSTALLER_RUNTIME_ID="vm-nvidia"
+YA_INSTALLER_RUNTIME_ID="vm"
+# YA_INSTALLER_RUNTIME_DESCRIPTOR="ya-runtime-vm-nvidia.json"
+YA_INSTALLER_RUNTIME_DESCRIPTOR="ya-runtime-vm.json"
 YA_INSTALLER_DATA=${YA_INSTALLER_DATA:-$HOME/.local/share/ya-installer}
 YA_INSTALLER_LIB=${YA_INSTALLER_LIB:-$HOME/.local/lib/yagna}
 
@@ -97,21 +101,51 @@ download_vm_gpu() {
     _ostype="$1"
     test -d "$YA_INSTALLER_DATA/bundles" || mkdir -p "$YA_INSTALLER_DATA/bundles"
 
-    _url="https://github.com/golemfactory/${YA_INSTALLER_GPU_NAME}/releases/download/${YA_INSTALLER_GPU_VER}/${YA_INSTALLER_GPU_NAME}-${_ostype}-${YA_INSTALLER_GPU_VER}.tar.gz"
-    _dl_start "vm runtime" "$YA_INSTALLER_GPU_VER"
-    (downloader "$_url" - | tar -C "$YA_INSTALLER_DATA/bundles" -xz -f -) || err "failed to download $_url"
-    _dl_end
-    echo -n "$YA_INSTALLER_DATA/bundles/${YA_INSTALLER_GPU_NAME}-${_ostype}-${YA_INSTALLER_GPU_VER}"
+    _url="https://github.com/golemfactory/${YA_INSTALLER_RUNTIME_NAME}/releases/download/${YA_INSTALLER_RUNTIME_VER}/${YA_INSTALLER_RUNTIME_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}.tar.gz"
+    # _dl_start "vm runtime" "$YA_INSTALLER_RUNTIME_VER"
+    # (downloader "$_url" - | tar -C "$YA_INSTALLER_DATA/bundles" -xz -f -) || err "failed to download $_url"
+    # _dl_end
+    echo -n "$YA_INSTALLER_DATA/bundles/${YA_INSTALLER_RUNTIME_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}"
 }
 
+# Copies Runtime to plugins dir.
+# Returns path to Runtime desccriptor.
 install_vm_gpu() {
-  local _src _dst
+    local _src _plugins_dir
 
-  _src="$1"
-  _dst="$2/plugins"
-  mkdir -p "$_dst"
+    echo "install vm gpu";
 
-  (cd "$_src" && cp -r ./* "$_dst")
+    _src="$1"
+    _plugins_dir="$2/plugins"
+    mkdir -p "$_plugins_dir"
+
+    cd "$_plugins_dir"
+
+    if [ $(runtime_exists $YA_INSTALLER_RUNTIME_ID $_plugins_dir) == "true" ]; then
+        echo "Runtime with name \"$YA_INSTALLER_RUNTIME_ID\" already exists. Aborting.";
+        exit 1;
+    fi
+    # TODO also check file names against name collision
+    
+    cp -r "$_src"/* "$_plugins_dir/"
+
+    echo -n "$_plugins_dir/$YA_INSTALLER_RUNTIME_DESCRIPTOR";
+}
+
+runtime_exists() {
+    local _new_runtime _plugins_dir _tmp
+
+    _new_runtime=$1
+    _plugins_dir=$2
+
+    for old_runtime in $(jq '.[] | {name} | join(" ")' $_plugins_dir/*.json); do
+        if [ "$old_runtime" = "\"$_new_runtime\"" ]; then
+            echo -n "true";
+            return 0;
+        fi
+    done;
+
+    echo -n "false"
 }
 
 configure_preset() {
@@ -136,9 +170,11 @@ clear_exit() {
     exit 1
 }
 
-##############
+##########
+## Main ##
+##########
 
-local _os_type _src_vm_gpu _vm_name
+local _os_type _download_dir _runtime_descriptor
 
 # Check OS
 _os_type="$(detect_dist)"
@@ -157,9 +193,9 @@ if [ "$warning_dialog_status" -eq 1 ]; then
 fi
 
 # Download runtime
-_src_vm_gpu=$(download_vm_gpu "$_os_type") || exit 1
+_download_dir=$(download_vm_gpu "$_os_type") || exit 1
 
 # Install runtime
-_vm_name=$(install_vm_gpu "$_src_vm_gpu" "$YA_INSTALLER_LIB") || exit 1
+_runtime_descriptor=$(install_vm_gpu "$_download_dir" "$YA_INSTALLER_LIB") || exit 1
 
 echo "WIP"
