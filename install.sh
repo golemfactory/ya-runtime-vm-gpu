@@ -3,10 +3,12 @@
 
 set -u
 
-YA_INSTALLER_GPU_VER=${YA_INSTALLER_GPU_VER:-pre-rel-v0.1.0-rc23}
+# YA_INSTALLER_GPU_VER=${YA_INSTALLER_GPU_VER:-pre-rel-v0.1.0-rc23}
+YA_INSTALLER_GPU_VER=${YA_INSTALLER_GPU_VER:-v0.3.0}
+# YA_INSTALLER_GPU_NAME=${YA_INSTALLER_GPU_NAME:-ya-runtime-vm-nvidia}
+YA_INSTALLER_GPU_NAME=${YA_INSTALLER_GPU_NAME:-ya-runtime-vm}
 YA_INSTALLER_DATA=${YA_INSTALLER_DATA:-$HOME/.local/share/ya-installer}
 YA_INSTALLER_LIB=${YA_INSTALLER_LIB:-$HOME/.local/lib/yagna}
-YA_INSTALLER_GPU_NAME=${YA_INSTALLER_GPU_NAME:ya-runtime-vm-nvidia}
 
 _dl_head() {
     local _sep
@@ -102,6 +104,22 @@ download_vm_gpu() {
     echo -n "$YA_INSTALLER_DATA/bundles/${YA_INSTALLER_GPU_NAME}-${_ostype}-${YA_INSTALLER_GPU_VER}"
 }
 
+install_vm_gpu() {
+  local _src _dst
+
+  _src="$1"
+  _dst="$2/plugins"
+  mkdir -p "$_dst"
+
+  (cd "$_src" && cp -r ./* "$_dst")
+}
+
+configure_preset() {
+    local _vm_name
+
+    _vm_name="$1"
+}
+
 version_name() {
 	local name
 
@@ -120,7 +138,7 @@ clear_exit() {
 
 ##############
 
-local _os_type
+local _os_type _src_vm_gpu _vm_name
 
 # Check OS
 _os_type="$(detect_dist)"
@@ -139,5 +157,9 @@ if [ "$warning_dialog_status" -eq 1 ]; then
 fi
 
 # Download runtime
+_src_vm_gpu=$(download_vm_gpu "$_os_type") || exit 1
+
+# Install runtime
+_vm_name=$(install_vm_gpu "$_src_vm_gpu" "$YA_INSTALLER_LIB") || exit 1
 
 echo "WIP"
