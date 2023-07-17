@@ -1,7 +1,7 @@
 [
     {
       "name": "vm-nvidia",
-      "version": "VERSION",
+      "version": "__VERSION__",
       "supervisor-path": "exe-unit",
       "runtime-path": "ya-runtime-vm-nvidia/ya-runtime-vm-nvidia",
       "description": "vm nvidia runtime",

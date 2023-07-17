@@ -156,14 +156,17 @@ jobs:
 
           chmod +x ${TARGET_DIR}/runtime/vmrt
           chmod +x ${TARGET_DIR}/${VM_NAME}
-
+          
           RUNTIME_DESC=build/${TOP_DIR_NAME}/${VM_NAME}.json
           VERSION=${TAG_NAME#v}
           VERSION=${VERSION#pre-rel-v}
           cp conf/${VM_NAME}.json         ${RUNTIME_DESC}
-          sed -i "s/VERSION/${VERSION}/"  ${RUNTIME_DESC}
+          sed -i "s/__VERSION__/${VERSION}/"  ${RUNTIME_DESC}
 
           mkdir -p dist
+
+          cp install.sh dist/install.sh && sed "s/__TAG_NAME__/${TAG_NAME}/" dist/install.sh
+          
           (cd build && tar czvf ../dist/"${TOP_DIR_NAME}.tar.gz" "${TOP_DIR_NAME}")
 
       - name: Release
