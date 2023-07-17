@@ -114,8 +114,6 @@ download_vm_gpu() {
 install_vm_gpu() {
     local _src _plugins_dir
 
-    echo "install vm gpu";
-
     _src="$1"
     _plugins_dir="$2/plugins"
     mkdir -p "$_plugins_dir"
@@ -153,7 +151,8 @@ configure_runtime() {
     local _descriptor_path
 
     _descriptor_path="$1"
-    jq '.[0].name = "$YA_INSTALLER_RUNTIME_ID"' $_descriptor_path
+    jq '.[0].name = "$YA_INSTALLER_RUNTIME_ID"' $_descriptor_path > "$_descriptor_path.tmp" && mv "$_descriptor_path.tmp" "$_descriptor_path";
+    jq '.[0]["extra-args"] += ["--runtime-arg=--pci-device=$PCI_DEVICE"]' $_descriptor_path > "$_descriptor_path.tmp" && mv "$_descriptor_path.tmp" "$_descriptor_path";
 }
 
 configure_preset() {
@@ -163,10 +162,10 @@ configure_preset() {
 }
 
 version_name() {
-	local name
+    local name
 
-	name=${1#pre-rel-}
-	printf "%s" "${name#v}"
+    name=${1#pre-rel-}
+    printf "%s" "${name#v}"
 }
 
 check_cmd() {
@@ -207,7 +206,7 @@ echo "Downloaded"
 # Install runtime
 _runtime_descriptor=$(install_vm_gpu "$_download_dir" "$YA_INSTALLER_LIB") || err "Failed to install $_runtime_descriptor"
 echo "Installed"
-
+echo "Descriptor: $_runtime_descriptor";
 configure_runtime "$_runtime_descriptor"
 echo "Configured"
 
