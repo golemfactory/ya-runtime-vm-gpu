@@ -186,6 +186,22 @@ configure_preset() {
         --price Duration=$_duration_price CPU=$_cpu_price "Init price"=$INIT_PRICE;
 }
 
+download_jq() {
+    local _jq_version _bin _url
+    _bin=$1
+
+    version=$(jq --version 2>&1)
+    if [[ $version == *"jq-1.6"* ]]; then
+        return 0;
+    fi;
+    _jq_version="1.6"
+    _url="https://github.com/jqlang/jq/releases/download/jq-$_jq_version/jq-linux64"
+    _dl_start "jq" $_jq_version
+    (downloader $_url $_bin/jq) || err "Failed to download $_url"
+    _dl_end
+    chmod +x $_bin/jq
+}
+
 version_name() {
     local name
 
@@ -220,11 +236,12 @@ clear_exit() {
 main() {
     need_cmd ya-provider
     need_cmd uname
+    need_cmd chmod
     need_cmd mkdir
     need_cmd mv
     need_cmd bc
 
-    local _os_type _download_dir _runtime_descriptor
+    local _os_type _download_dir _runtime_descriptor _bin
 
     # Check OS
     _os_type="$(detect_dist)"
@@ -241,17 +258,21 @@ main() {
     if [ "$warning_dialog_status" -eq 1 ]; then
         clear_exit;
     fi
+    
+    # Init PATH
+    _bin="$YA_INSTALLER_DATA/bin"
+    test -d "$_bin" || mkdir -p "$_bin";
+    export PATH=$_bin:$PATH
+    
+    download_jq $_bin
 
     # Download runtime
     _download_dir=$(download_vm_gpu "$_os_type") || exit 1
-    echo "Downloaded"
 
     # Install runtime
     _runtime_descriptor=$(install_vm_gpu "$_download_dir") || err "Failed to install $_runtime_descriptor"
-    echo "Installed"
 
     configure_runtime "$_runtime_descriptor"
-    echo "Configured"
 
     configure_preset
 }
