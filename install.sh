@@ -117,12 +117,12 @@ install_vm_gpu() {
     local _src _plugins_dir
 
     _src="$1"
-    _plugins_dir="$2/plugins"
+    _plugins_dir="$YA_INSTALLER_LIB/plugins"
     mkdir -p "$_plugins_dir"
 
     cd "$_plugins_dir"
 
-    if [ $(runtime_exists $YA_INSTALLER_RUNTIME_ID $_plugins_dir) == "true" ]; then
+    if [ $(runtime_exists) == "true" ]; then
         echo "Runtime with name \"$YA_INSTALLER_RUNTIME_ID\" already exists. Aborting.";
         exit 1;
     fi
@@ -134,13 +134,21 @@ install_vm_gpu() {
 }
 
 runtime_exists() {
-    local _new_runtime _plugins_dir _tmp
+    provider_entry_exists "exe-unit"
+}
 
-    _new_runtime=$1
-    _plugins_dir=$2
+preset_exists() {
+    provider_entry_exists "preset"
+}
 
-    for old_runtime in $(jq '.[] | {name} | join(" ")' $_plugins_dir/*.json); do
-        if [ "$old_runtime" = "\"$_new_runtime\"" ]; then
+provider_entry_exists() {
+    local _provider_cmd _new_runtime
+
+    _provider_cmd=$1
+    _new_entry=$YA_INSTALLER_RUNTIME_ID
+
+    for old_entry in $(ya-provider $_provider_cmd list --json | jq '.[] | {name} | join(" ")'); do
+        if [ "$old_entry" = "\"$_new_entry\"" ]; then
             echo -n "true";
             return 0;
         fi
@@ -160,17 +168,22 @@ configure_runtime() {
 }
 
 configure_preset() {
-    local _duration_price _cpu_price
+    local _duration_price _cpu_price _preset_cmd
 
     _duration_price=$(echo "$GLM_PER_HOUR / 3600.0 / 5.0" | bc -l);
     _cpu_price=$(echo "$GLM_PER_HOUR / 3600.0" | bc -l);
 
-    ya-provider preset create \
+    if [ $(preset_exists) == "true" ]; then
+        _preset_cmd="update --name $YA_INSTALLER_RUNTIME_ID";
+    else
+        _preset_cmd="create --preset-name $YA_INSTALLER_RUNTIME_ID";
+    fi
+
+    ya-provider preset $_preset_cmd \
         --no-interactive \
-        --preset-name $YA_INSTALLER_RUNTIME_ID \
         --exe-unit $YA_INSTALLER_RUNTIME_ID \
         --pricing linear \
-        --price Duration=$_duration_price CPU=$_cpu_price "Init price"=$INIT_PRICE
+        --price Duration=$_duration_price CPU=$_cpu_price "Init price"=$INIT_PRICE;
 }
 
 version_name() {
@@ -234,16 +247,13 @@ main() {
     echo "Downloaded"
 
     # Install runtime
-    _runtime_descriptor=$(install_vm_gpu "$_download_dir" "$YA_INSTALLER_LIB") || err "Failed to install $_runtime_descriptor"
+    _runtime_descriptor=$(install_vm_gpu "$_download_dir") || err "Failed to install $_runtime_descriptor"
     echo "Installed"
 
     configure_runtime "$_runtime_descriptor"
     echo "Configured"
 
     configure_preset
-
-    echo "WIP"
-
 }
 
 main "$@" || exit 1
