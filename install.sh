@@ -4,6 +4,8 @@
 set -u
 
 PCI_DEVICE=${PCI_DEVICE:-NULL}
+GLM_PER_HOUR=${GLM_PER_HOUR:-0.025}
+INIT_PRICE=${INIT_PRICE:-0}
 # YA_INSTALLER_RUNTIME_VER=${YA_INSTALLER_RUNTIME_VER:-pre-rel-v0.1.0-rc23}
 YA_INSTALLER_RUNTIME_VER=${YA_INSTALLER_RUNTIME_VER:-v0.3.0}
 # YA_INSTALLER_RUNTIME_NAME="ya-runtime-vm-nvidia"
@@ -158,7 +160,17 @@ configure_runtime() {
 }
 
 configure_preset() {
+    local _duration_price _cpu_price
 
+    _duration_price=$(echo "$GLM_PER_HOUR / 3600.0 / 5.0" | bc -l);
+    _cpu_price=$(echo "$GLM_PER_HOUR / 3600.0" | bc -l);
+
+    ya-provider preset create \
+        --no-interactive \
+        --preset-name $YA_INSTALLER_RUNTIME_ID \
+        --exe-unit $YA_INSTALLER_RUNTIME_ID \
+        --pricing linear \
+        --price Duration=$_duration_price CPU=$_cpu_price "Init price"=$INIT_PRICE
 }
 
 version_name() {
@@ -197,6 +209,7 @@ main() {
     need_cmd uname
     need_cmd mkdir
     need_cmd mv
+    need_cmd bc
 
     local _os_type _download_dir _runtime_descriptor
 
