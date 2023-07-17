@@ -158,9 +158,7 @@ configure_runtime() {
 }
 
 configure_preset() {
-    local _vm_name
 
-    _vm_name="$1"
 }
 
 version_name() {
@@ -168,6 +166,21 @@ version_name() {
 
     name=${1#pre-rel-}
     printf "%s" "${name#v}"
+}
+
+say() {
+    printf 'golem-installer: %s\n' "$1"
+}
+
+err() {
+    say "$1" >&2
+    exit 1
+}
+
+need_cmd() {
+    if ! check_cmd "$1"; then
+        err "need '$1' (command not found)"
+    fi
 }
 
 check_cmd() {
@@ -179,37 +192,45 @@ clear_exit() {
     exit 1
 }
 
-##########
-## Main ##
-##########
+main() {
+    need_cmd ya-provider
+    need_cmd uname
+    need_cmd mkdir
+    need_cmd mv
 
-local _os_type _download_dir _runtime_descriptor
+    local _os_type _download_dir _runtime_descriptor
 
-# Check OS
-_os_type="$(detect_dist)"
-if [ "$_os_type" != "linux" ]; then
-    dialog --stdout --title "Error" --msgbox "\nIncompatible OS: $_os_type" 6 50
-    clear_exit;
-fi
+    # Check OS
+    _os_type="$(detect_dist)"
+    if [ "$_os_type" != "linux" ]; then
+        dialog --stdout --title "Error" --msgbox "\nIncompatible OS: $_os_type" 6 50
+        clear_exit;
+    fi
 
-# Warning dialog
-dialog --stdout --title "Warning" \
-  --backtitle "Experimental Feature" \
-  --yesno "Yagna runtime with GPU support is an experimental feature.\n\nDo you want to continue?" 8 60
-warning_dialog_status=$?
-if [ "$warning_dialog_status" -eq 1 ]; then
-    clear_exit;
-fi
+    # Warning dialog
+    dialog --stdout --title "Warning" \
+    --backtitle "Experimental Feature" \
+    --yesno "Yagna runtime with GPU support is an experimental feature.\n\nDo you want to continue?" 8 60
+    warning_dialog_status=$?
+    if [ "$warning_dialog_status" -eq 1 ]; then
+        clear_exit;
+    fi
 
-# Download runtime
-_download_dir=$(download_vm_gpu "$_os_type") || exit 1
-echo "Downloaded"
+    # Download runtime
+    _download_dir=$(download_vm_gpu "$_os_type") || exit 1
+    echo "Downloaded"
 
-# Install runtime
-_runtime_descriptor=$(install_vm_gpu "$_download_dir" "$YA_INSTALLER_LIB") || err "Failed to install $_runtime_descriptor"
-echo "Installed"
-echo "Descriptor: $_runtime_descriptor";
-configure_runtime "$_runtime_descriptor"
-echo "Configured"
+    # Install runtime
+    _runtime_descriptor=$(install_vm_gpu "$_download_dir" "$YA_INSTALLER_LIB") || err "Failed to install $_runtime_descriptor"
+    echo "Installed"
 
-echo "WIP"
+    configure_runtime "$_runtime_descriptor"
+    echo "Configured"
+
+    configure_preset
+
+    echo "WIP"
+
+}
+
+main "$@" || exit 1
