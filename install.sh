@@ -9,7 +9,7 @@ YA_INSTALLER_RUNTIME_VER=${YA_INSTALLER_RUNTIME_VER:-v0.3.0}
 # YA_INSTALLER_RUNTIME_NAME="ya-runtime-vm-nvidia"
 YA_INSTALLER_RUNTIME_NAME="ya-runtime-vm"
 # YA_INSTALLER_RUNTIME_ID="vm-nvidia"
-YA_INSTALLER_RUNTIME_ID="vm"
+YA_INSTALLER_RUNTIME_ID=${YA_INSTALLER_RUNTIME_ID:-vm}
 # YA_INSTALLER_RUNTIME_DESCRIPTOR="ya-runtime-vm-nvidia.json"
 YA_INSTALLER_RUNTIME_DESCRIPTOR="ya-runtime-vm.json"
 YA_INSTALLER_DATA=${YA_INSTALLER_DATA:-$HOME/.local/share/ya-installer}
@@ -148,11 +148,13 @@ runtime_exists() {
 }
 
 configure_runtime() {
-    local _descriptor_path
+    local _descriptor_path _set_name_query _add_extra_arg_query
 
     _descriptor_path="$1"
-    jq '.[0].name = "$YA_INSTALLER_RUNTIME_ID"' $_descriptor_path > "$_descriptor_path.tmp" && mv "$_descriptor_path.tmp" "$_descriptor_path";
-    jq '.[0]["extra-args"] += ["--runtime-arg=--pci-device=$PCI_DEVICE"]' $_descriptor_path > "$_descriptor_path.tmp" && mv "$_descriptor_path.tmp" "$_descriptor_path";
+    _set_name_query=".[0].name = \"$YA_INSTALLER_RUNTIME_ID\"";
+    jq "$_set_name_query" $_descriptor_path > "$_descriptor_path.tmp" && mv "$_descriptor_path.tmp" "$_descriptor_path";
+    _add_extra_arg_query=".[0][\"extra-args\"] += [\"--runtime-arg=--pci-device=$PCI_DEVICE\"]";
+    jq "$_add_extra_arg_query" $_descriptor_path > "$_descriptor_path.tmp" && mv "$_descriptor_path.tmp" "$_descriptor_path";
 }
 
 configure_preset() {
