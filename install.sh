@@ -3,6 +3,7 @@
 
 set -u
 
+PCI_DEVICE=${PCI_DEVICE:-NULL}
 # YA_INSTALLER_RUNTIME_VER=${YA_INSTALLER_RUNTIME_VER:-pre-rel-v0.1.0-rc23}
 YA_INSTALLER_RUNTIME_VER=${YA_INSTALLER_RUNTIME_VER:-v0.3.0}
 # YA_INSTALLER_RUNTIME_NAME="ya-runtime-vm-nvidia"
@@ -148,6 +149,13 @@ runtime_exists() {
     echo -n "false"
 }
 
+configure_runtime() {
+    local _descriptor_path
+
+    _descriptor_path="$1"
+    jq '.[0].name = "$YA_INSTALLER_RUNTIME_ID"' $_descriptor_path
+}
+
 configure_preset() {
     local _vm_name
 
@@ -194,8 +202,13 @@ fi
 
 # Download runtime
 _download_dir=$(download_vm_gpu "$_os_type") || exit 1
+echo "Downloaded"
 
 # Install runtime
-_runtime_descriptor=$(install_vm_gpu "$_download_dir" "$YA_INSTALLER_LIB") || exit 1
+_runtime_descriptor=$(install_vm_gpu "$_download_dir" "$YA_INSTALLER_LIB") || err "Failed to install $_runtime_descriptor"
+echo "Installed"
+
+configure_runtime "$_runtime_descriptor"
+echo "Configured"
 
 echo "WIP"
