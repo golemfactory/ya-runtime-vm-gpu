@@ -165,8 +165,8 @@ jobs:
 
           mkdir -p dist
 
-          cp install.sh dist/install.sh && sed "s/__TAG_NAME__/${TAG_NAME}/" dist/install.sh
-          
+          cp install.sh dist/install.sh && sed -i "s/__TAG_NAME__/${TAG_NAME}/" dist/install.sh
+
           (cd build && tar czvf ../dist/"${TOP_DIR_NAME}.tar.gz" "${TOP_DIR_NAME}")
 
       - name: Release
