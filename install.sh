@@ -3,10 +3,10 @@
 
 set -u
 
-YA_INSTALLER_RUNTIME_VER=${YA_INSTALLER_RUNTIME_VER:__TAG_NAME__}
-YA_INSTALLER_RUNTIME_NAME="ya-runtime-vm-nvidia"
+YA_INSTALLER_RUNTIME_VER=${YA_INSTALLER_RUNTIME_VER:-__TAG_NAME__}
+YA_INSTALLER_RUNTIME_REPO_NAME="ya-runtime-vm-nvidia"
 YA_INSTALLER_RUNTIME_ID="vm-nvidia"
-YA_INSTALLER_RUNTIME_DESCRIPTOR="ya-runtime-vm-nvidia.json"
+YA_INSTALLER_RUNTIME_DESCRIPTOR="${YA_INSTALLER_RUNTIME_REPO_NAME}.json"
 
 PCI_DEVICE=${PCI_DEVICE:-NULL}
 
@@ -16,86 +16,7 @@ INIT_PRICE=${INIT_PRICE:-0}
 YA_INSTALLER_DATA=${YA_INSTALLER_DATA:-$HOME/.local/share/ya-installer}
 YA_INSTALLER_LIB=${YA_INSTALLER_LIB:-$HOME/.local/lib/yagna}
 
-_dl_head() {
-    local _sep
-    _sep="-----"
-    _sep="$_sep$_sep$_sep$_sep"
-    printf "%-20s %25s\n" " Component " " Version" >&2
-    printf "%-20s %25s\n" "-----------" "$_sep" >&2
-}
-
-_dl_start() {
-	printf "%-20s %25s " "$1" "$(version_name "$2")" >&2
-}
-
-_dl_end() {
-    printf "[done]\n" >&2
-}
-
-detect_dist() {
-    local _ostype _cputype
-
-    _ostype="$(uname -s)"
-    _cputype="$(uname -m)"
-
-    if [ "$_ostype" = Darwin ]; then
-        if [ "$_cputype" = i386 ]; then
-            # Darwin `uname -m` lies
-            if sysctl hw.optional.x86_64 | grep -q ': 1'; then
-                _cputype=x86_64
-            fi
-        fi
-        case "$_cputype" in arm64 | aarch64)
-            _cputype=x86_64
-            ;;
-        esac
-    fi
-
-
-    case "$_cputype" in
-        x86_64 | x86-64 | x64 | amd64)
-            _cputype=x86_64
-            ;;
-        *)
-            err "invalid cputype: $_cputype"
-            ;;
-    esac
-    case "$_ostype" in
-        Linux)
-            _ostype=linux
-            ;;
-        Darwin)
-            _ostype=osx
-            ;;
-        MINGW* | MSYS* | CYGWIN*)
-            _ostype=windows
-            ;;
-        *)
-            err "invalid os type: $_ostype"
-    esac
-    echo -n "$_ostype"
-}
-
-downloader() {
-    local _dld
-    if check_cmd curl; then
-        _dld=curl
-    elif check_cmd wget; then
-        _dld=wget
-    else
-        _dld='curl or wget' # to be used in error message of need_cmd
-    fi
-
-    if [ "$1" = --check ]; then
-        need_cmd "$_dld"
-    elif [ "$_dld" = curl ]; then
-        curl --proto '=https' --silent --show-error --fail --location "$1" --output "$2"
-    elif [ "$_dld" = wget ]; then
-        wget -O "$2" --https-only "$1"
-    else
-        err "Unknown downloader"   # should not reach here
-    fi
-}
+# Runtime tools #######################################################################################################
 
 download_vm_gpu() {
     local _ostype _url
@@ -103,11 +24,11 @@ download_vm_gpu() {
     _ostype="$1"
     test -d "$YA_INSTALLER_DATA/bundles" || mkdir -p "$YA_INSTALLER_DATA/bundles"
 
-    _url="https://github.com/golemfactory/${YA_INSTALLER_RUNTIME_NAME}/releases/download/${YA_INSTALLER_RUNTIME_VER}/${YA_INSTALLER_RUNTIME_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}.tar.gz"
+    _url="https://github.com/golemfactory/${YA_INSTALLER_RUNTIME_REPO_NAME}/releases/download/${YA_INSTALLER_RUNTIME_VER}/${YA_INSTALLER_RUNTIME_REPO_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}.tar.gz"
     # _dl_start "vm runtime" "$YA_INSTALLER_RUNTIME_VER"
     # (downloader "$_url" - | tar -C "$YA_INSTALLER_DATA/bundles" -xz -f -) || err "failed to download $_url"
     # _dl_end
-    echo -n "$YA_INSTALLER_DATA/bundles/${YA_INSTALLER_RUNTIME_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}"
+    echo -n "$YA_INSTALLER_DATA/bundles/${YA_INSTALLER_RUNTIME_REPO_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}"
 }
 
 # Copies Runtime to plugins dir.
@@ -201,6 +122,242 @@ download_jq() {
     chmod +x $_bin/jq
 }
 
+# IOMMU ###############################################################################################################
+
+get_iommu_groups()
+{
+    ls -v /sys/kernel/iommu_groups
+}
+
+test_iommu_enabled()
+{
+    count_iommu_groups=$(get_iommu_groups | wc -l)
+    if [ $count_iommu_groups -gt 0 ]; then
+        echo enabled
+    else
+        echo disabled
+    fi
+}
+
+get_iommu_group_devices()
+{
+    ls /sys/kernel/iommu_groups/$iommu_group/devices
+}
+
+# PCI #################################################################################################################
+
+get_pid_vid_from_slot()
+{
+    lspci -n -s $1 | awk -F" " '{print $3}'
+}
+
+get_pci_full_string_description_from_slot()
+{
+    lspci -s $1
+}
+
+get_pci_short_string_description_from_slot()
+{
+    get_pci_full_string_description_from_slot $1 | awk -F": " '{print $2}'
+}
+
+list_pci_devices_in_iommu_group()
+{
+    ret="IOMMU Group "$1
+    ret="$ret\n##############"
+    for device in $2; do
+        ret="$ret\n$(get_pci_full_string_description_from_slot $device)"
+    done;
+    echo $ret
+}
+
+test_pci_slot_as_vga()
+{
+    lspci -d ::0300 -s $1
+}
+
+test_pci_slot_as_audio()
+{
+    lspci -d ::0403 -s $1
+}
+
+# vfio ################################################################################################################
+
+get_gpu_list_as_menu()
+{
+    menu=""
+    gpu_list_size=$(expr ${#gpu_list[@]} / 3)
+    for ((i=0; i<$gpu_list_size; i++));    do
+        if [ "$menu" == "" ]; then
+            menu="$i%${gpu_list[$i,0]}"
+        else
+            menu="$menu%$i%${gpu_list[$i,0]}"
+        fi
+    done;
+    echo $menu
+}
+
+select_gpu_compatible()
+{
+    least_one_gpu_compatible=0
+    declare -A gpu_list
+    gpu_count=0
+
+    iommu_groups=$(get_iommu_groups);
+    for iommu_group in $iommu_groups; do
+
+        devices=$(get_iommu_group_devices)
+        devices_count=$(echo $devices | wc -w)
+
+        for device in $devices; do
+            gpu_vga=$(test_pci_slot_as_vga $device)
+
+            if [ ! -z "$gpu_vga" ]; then
+                gpu_vga_slot=$(echo $gpu_vga | awk -F" " '{print $1}')
+
+                if [ $devices_count -gt 2 ]; then
+                    display_bad_isolation $iommu_group "$devices"
+                elif [ $devices_count -eq 2 ]; then
+
+                    second_device=$(echo $devices | awk -F" " '{print $2}')
+                    gpu_audio=$(test_pci_slot_as_audio $second_device)
+
+                    if [ ! -z "$gpu_audio" ]; then
+
+                        least_one_gpu_compatible=1
+
+                        gpu_audio_slot=$(echo $gpu_audio | awk -F" " '{print $1}')
+
+                        gpu_vga_pid_vid=$(get_pid_vid_from_slot $gpu_vga_slot)
+                        gpu_audio_pid_vid=$(get_pid_vid_from_slot $gpu_audio_slot)
+                        vfio=$gpu_vga_pid_vid","$gpu_audio_pid_vid
+
+                        gpu_list[$gpu_count,0]=$(get_pci_short_string_description_from_slot $gpu_vga)
+                        gpu_list[$gpu_count,1]=$vfio
+                        gpu_list[$gpu_count,2]=$gpu_vga_slot
+                        ((gpu_count+=1))
+
+                    else
+                        display_bad_isolation $iommu_group "$devices"
+                    fi
+                else
+
+                    least_one_gpu_compatible=1
+
+                    gpu_vga_pid_vid=$(get_pid_vid_from_slot $gpu_vga_slot)
+                    vfio=$gpu_vga_pid_vid
+
+                    gpu_list[$gpu_count,0]=$(get_pci_short_string_description_from_slot $device)
+                    gpu_list[$gpu_count,1]=$vfio
+                    gpu_list[$gpu_count,2]=$gpu_vga_slot
+                    ((gpu_count+=1))
+                fi
+            fi
+        done;
+    done;
+
+    if [ $least_one_gpu_compatible -eq 0 ]; then
+        dialog --stdout --title "Error" --msgbox "\nNo compatible GPU available." 6 50
+        exit 1
+    else
+        menu=$(get_gpu_list_as_menu $gpu_list)
+        IFS=$'%'
+        gpu_index=$(dialog --stdout --menu "Select GPU to share" 0 0 0 $menu)
+        unset IFS
+        if [ "$gpu_index" == "" ]; then
+            dialog --stdout --title "Cancel" --msgbox "\nInstallation canceled." 6 30
+            exit 2
+        else
+            gpu_vfio=${gpu_list[$gpu_index,1]}
+            gpu_slot=${gpu_list[$gpu_index,2]}
+            echo "$gpu_vfio $gpu_slot"
+        fi
+    fi
+}
+
+# Tools ###############################################################################################################
+
+_dl_head() {
+    local _sep
+    _sep="-----"
+    _sep="$_sep$_sep$_sep$_sep"
+    printf "%-20s %25s\n" " Component " " Version" >&2
+    printf "%-20s %25s\n" "-----------" "$_sep" >&2
+}
+
+_dl_start() {
+    printf "%-20s %25s " "$1" "$(version_name "$2")" >&2
+}
+
+_dl_end() {
+    printf "[done]\n" >&2
+}
+
+detect_dist() {
+    local _ostype _cputype
+
+    _ostype="$(uname -s)"
+    _cputype="$(uname -m)"
+
+    if [ "$_ostype" = Darwin ]; then
+        if [ "$_cputype" = i386 ]; then
+            # Darwin `uname -m` lies
+            if sysctl hw.optional.x86_64 | grep -q ': 1'; then
+                _cputype=x86_64
+            fi
+        fi
+        case "$_cputype" in arm64 | aarch64)
+            _cputype=x86_64
+            ;;
+        esac
+    fi
+
+
+    case "$_cputype" in
+        x86_64 | x86-64 | x64 | amd64)
+            _cputype=x86_64
+            ;;
+        *)
+            err "invalid cputype: $_cputype"
+            ;;
+    esac
+    case "$_ostype" in
+        Linux)
+            _ostype=linux
+            ;;
+        Darwin)
+            _ostype=osx
+            ;;
+        MINGW* | MSYS* | CYGWIN*)
+            _ostype=windows
+            ;;
+        *)
+            err "invalid os type: $_ostype"
+    esac
+    echo -n "$_ostype"
+}
+
+downloader() {
+    local _dld
+    if check_cmd curl; then
+        _dld=curl
+    elif check_cmd wget; then
+        _dld=wget
+    else
+        _dld='curl or wget' # to be used in error message of need_cmd
+    fi
+
+    if [ "$1" = --check ]; then
+        need_cmd "$_dld"
+    elif [ "$_dld" = curl ]; then
+        curl --proto '=https' --silent --show-error --fail --location "$1" --output "$2"
+    elif [ "$_dld" = wget ]; then
+        wget -O "$2" --https-only "$1"
+    else
+        err "Unknown downloader"   # should not reach here
+    fi
+}
+
 version_name() {
     local name
 
@@ -232,6 +389,21 @@ clear_exit() {
     exit 1
 }
 
+display_error()
+{
+	dialog --title "$1" --msgbox "\n$2" $3 $4
+	clear
+	exit
+}
+
+display_bad_isolation()
+{
+	msg=$(list_pci_devices_in_iommu_group $1 "$2")
+	dialog --stdout --title "GPU bad isolation" --msgbox "\n$msg\n\nTry changing your GPU PCIe slot." 13 130
+}
+
+# Main ################################################################################################################
+
 main() {
     need_cmd ya-provider
     need_cmd uname
@@ -240,7 +412,7 @@ main() {
     need_cmd mv
     need_cmd bc
 
-    local _os_type _download_dir _runtime_descriptor _bin
+    local _os_type _download_dir _runtime_descriptor _bin _gpu
 
     # Check OS
     _os_type="$(detect_dist)"
@@ -256,6 +428,11 @@ main() {
     warning_dialog_status=$?
     if [ "$warning_dialog_status" -eq 1 ]; then
         clear_exit;
+    fi
+
+    # Select GPU
+    if [ "$PCI_DEVICE" == "NULL" ]; then
+        PCI_DEVICE=$(select_gpu_compatible)
     fi
     
     # Init PATH
