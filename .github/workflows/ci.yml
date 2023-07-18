@@ -12,8 +12,9 @@ env:
   self-test-img_tag: pre-rel-v0.1.0_RC4_xorg
   vm_name: ya-runtime-vm-nvidia
   os_name: linux
-  organisation: pwalski
+  organisation: golemfactory
   docker-img_name: golem_nvidia_base
+  docker-img_description: Base image with Nvidia drivers for Golem VM images.
 
 jobs:
   build-golem_nvidia_base:
@@ -28,12 +29,6 @@ jobs:
         with:
           submodules: "recursive"
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Tag name and version
         id: tag_name
         run: |
@@ -43,15 +38,23 @@ jobs:
           echo "TAG=${TAG}" >> $GITHUB_OUTPUT
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Build and push
+      - name: 'Login to GitHub Container Registry'
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: ./golem_nvidia_base/
           push: true
           tags: |
-            ${{ env.organisation }}/${{ env.docker-img_name }}:${{ steps.tag_name.outputs.VERSION }}
-            ${{ env.organisation }}/${{ env.docker-img_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'beta' || 'stable' }}
-            ${{ env.organisation }}/${{ env.docker-img_name }}:latest
+            ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:${{ steps.tag_name.outputs.VERSION }}
+            ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'beta' || 'stable' }}
+            ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:latest
+          outputs: type=image,annotation-index.org.opencontainers.image.description=${{ env.docker-img_description }}
 
       - name: Copy
         run: |
