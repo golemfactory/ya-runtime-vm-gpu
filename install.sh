@@ -25,9 +25,9 @@ download_vm_gpu() {
     test -d "$YA_INSTALLER_DATA/bundles" || mkdir -p "$YA_INSTALLER_DATA/bundles"
 
     _url="https://github.com/golemfactory/${YA_INSTALLER_RUNTIME_REPO_NAME}/releases/download/${YA_INSTALLER_RUNTIME_VER}/${YA_INSTALLER_RUNTIME_REPO_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}.tar.gz"
-    # _dl_start "vm runtime" "$YA_INSTALLER_RUNTIME_VER"
-    # (downloader "$_url" - | tar -C "$YA_INSTALLER_DATA/bundles" -xz -f -) || err "failed to download $_url"
-    # _dl_end
+    _dl_start "vm runtime" "$YA_INSTALLER_RUNTIME_VER"
+    (downloader "$_url" - | tar -C "$YA_INSTALLER_DATA/bundles" -xz -f -) || err "failed to download $_url"
+    _dl_end
     echo -n "$YA_INSTALLER_DATA/bundles/${YA_INSTALLER_RUNTIME_REPO_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}"
 }
 
