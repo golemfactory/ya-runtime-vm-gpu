@@ -51,9 +51,9 @@ jobs:
           context: ./golem_nvidia_base/
           push: true
           tags: |
-            ${{ env.organisation }}/${{ env.docker-img_name }}:${{ steps.tag_name.outputs.VERSION }}
-            ${{ env.organisation }}/${{ env.docker-img_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'beta' || 'stable' }}
-            ${{ env.organisation }}/${{ env.docker-img_name }}:latest
+            ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:${{ steps.tag_name.outputs.VERSION }}
+            ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'beta' || 'stable' }}
+            ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:latest
           outputs: type=image,annotation-index.org.opencontainers.image.description=${{ env.docker-img_description }}
 
       - name: Copy
