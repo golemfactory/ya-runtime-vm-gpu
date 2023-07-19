@@ -7,13 +7,14 @@ on:
 
 env:
   runtime-vm_repository: pwalski/ya-runtime-vm
-  runtime-vm_version: pre-rel-v0.3.4-rc3
+  runtime-vm_version: pre-rel-v0.3.4-rc14
   self-test-img_repository: golemfactory/ya-self-test-img
-  self-test-img_tag: pre-rel-v0.1.0
+  self-test-img_tag: pre-rel-v0.1.0_RC4_xorg
   vm_name: ya-runtime-vm-nvidia
   os_name: linux
-  organisation: pwalski
+  organisation: golemfactory
   docker-img_name: golem_nvidia_base
+  docker-img_description: Base image with Nvidia drivers for Golem VM images.
 
 jobs:
   build-golem_nvidia_base:
@@ -28,12 +29,6 @@ jobs:
         with:
           submodules: "recursive"
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Tag name and version
         id: tag_name
         run: |
@@ -43,15 +38,23 @@ jobs:
           echo "TAG=${TAG}" >> $GITHUB_OUTPUT
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Build and push
+      - name: 'Login to GitHub Container Registry'
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: ./golem_nvidia_base/
           push: true
           tags: |
-            ${{ env.organisation }}/${{ env.docker-img_name }}:${{ steps.tag_name.outputs.VERSION }}
-            ${{ env.organisation }}/${{ env.docker-img_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'beta' || 'stable' }}
-            ${{ env.organisation }}/${{ env.docker-img_name }}:latest
+            ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:${{ steps.tag_name.outputs.VERSION }}
+            ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'beta' || 'stable' }}
+            ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:latest
+          outputs: type=image,annotation-index.org.opencontainers.image.description=${{ env.docker-img_description }}
 
       - name: Copy
         run: |
@@ -116,7 +119,7 @@ jobs:
         with:
           repository: ${{ env.self-test-img_repository }}
           tag: ${{ env.self-test-img_tag }}
-          fileName: self-test.gvmi
+          fileName: self-test-gpu.gvmi
           out-file-path: .
           tarBall: false
           zipBall: false
@@ -150,9 +153,9 @@ jobs:
           rsync -av --exclude='vmrt' --exclude='self-test.gvmi' --exclude='vmlinuz-virt' ${SRC_DIR}/runtime ${TARGET_DIR}
           cp ${SRC_DIR}/ya-runtime-vm ${TARGET_DIR}/${VM_NAME}
 
-          cp self-test.gvmi         $TARGET_DIR/runtime/
-          cp golem_nvidia_base/vmlinuz-virt   $TARGET_DIR/runtime/
-          cp qemu/build/*           $TARGET_DIR/runtime/
+          cp self-test-gpu.gvmi             $TARGET_DIR/runtime/self-test.gvmi 
+          cp golem_nvidia_base/vmlinuz-virt $TARGET_DIR/runtime/
+          cp qemu/build/*                   $TARGET_DIR/runtime/
 
           chmod +x ${TARGET_DIR}/runtime/vmrt
           chmod +x ${TARGET_DIR}/${VM_NAME}
@@ -161,9 +164,10 @@ jobs:
           VERSION=${TAG_NAME#v}
           VERSION=${VERSION#pre-rel-v}
           cp conf/${VM_NAME}.json         ${RUNTIME_DESC}
-          sed -i "s/VERSION/${VERSION}/"  ${RUNTIME_DESC}
+          sed -i "s/__VERSION__/${VERSION}/"  ${RUNTIME_DESC}
 
           mkdir -p dist
+          cp install.sh dist/install.sh && sed -i "s/__TAG_NAME__/${TAG_NAME}/" dist/install.sh
           (cd build && tar czvf ../dist/"${TOP_DIR_NAME}.tar.gz" "${TOP_DIR_NAME}")
 
       - name: Release
