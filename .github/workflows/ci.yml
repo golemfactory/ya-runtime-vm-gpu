@@ -153,13 +153,13 @@ jobs:
           rsync -av --exclude='vmrt' --exclude='self-test.gvmi' --exclude='vmlinuz-virt' ${SRC_DIR}/runtime ${TARGET_DIR}
           cp ${SRC_DIR}/ya-runtime-vm ${TARGET_DIR}/${VM_NAME}
 
-          cp self-test-gpu.gvmi         $TARGET_DIR/runtime/self-test.gvmi 
-          cp golem_nvidia_base/vmlinuz-virt   $TARGET_DIR/runtime/
-          cp qemu/build/*           $TARGET_DIR/runtime/
+          cp self-test-gpu.gvmi             $TARGET_DIR/runtime/self-test.gvmi 
+          cp golem_nvidia_base/vmlinuz-virt $TARGET_DIR/runtime/
+          cp qemu/build/*                   $TARGET_DIR/runtime/
 
           chmod +x ${TARGET_DIR}/runtime/vmrt
           chmod +x ${TARGET_DIR}/${VM_NAME}
-          
+
           RUNTIME_DESC=build/${TOP_DIR_NAME}/${VM_NAME}.json
           VERSION=${TAG_NAME#v}
           VERSION=${VERSION#pre-rel-v}
@@ -167,9 +167,7 @@ jobs:
           sed -i "s/__VERSION__/${VERSION}/"  ${RUNTIME_DESC}
 
           mkdir -p dist
-
           cp install.sh dist/install.sh && sed -i "s/__TAG_NAME__/${TAG_NAME}/" dist/install.sh
-
           (cd build && tar czvf ../dist/"${TOP_DIR_NAME}.tar.gz" "${TOP_DIR_NAME}")
 
       - name: Release
