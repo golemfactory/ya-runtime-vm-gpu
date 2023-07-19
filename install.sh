@@ -8,10 +8,10 @@ YA_INSTALLER_RUNTIME_REPO_NAME="ya-runtime-vm-nvidia"
 YA_INSTALLER_RUNTIME_ID="vm-nvidia"
 YA_INSTALLER_RUNTIME_DESCRIPTOR="${YA_INSTALLER_RUNTIME_REPO_NAME}.json"
 
-PCI_DEVICE=${PCI_DEVICE:-NULL}
+YA_RUNTIME_VM_PCI_DEVICE=${YA_RUNTIME_VM_PCI_DEVICE:-NULL}
 
-GLM_PER_HOUR=${GLM_PER_HOUR:-0.025}
-INIT_PRICE=${INIT_PRICE:-0}
+YA_INSTALLER_GLM_PER_HOUR=${YA_INSTALLER_YA_INSTALLER_GLM_PER_HOUR:-0.025}
+YA_INSTALLER_INIT_PRICE=${YA_INSTALLER_INIT_PRICE:-0}
 
 YA_INSTALLER_DATA=${YA_INSTALLER_DATA:-$HOME/.local/share/ya-installer}
 YA_INSTALLER_LIB=${YA_INSTALLER_LIB:-$HOME/.local/lib/yagna}
@@ -85,15 +85,15 @@ configure_runtime() {
     _descriptor_path="$1"
     _set_name_query=".[0].name = \"$YA_INSTALLER_RUNTIME_ID\"";
     jq "$_set_name_query" $_descriptor_path > "$_descriptor_path.tmp" && mv "$_descriptor_path.tmp" "$_descriptor_path";
-    _add_extra_arg_query=".[0][\"extra-args\"] += [\"--runtime-arg=--pci-device=$PCI_DEVICE\"]";
+    _add_extra_arg_query=".[0][\"extra-args\"] += [\"--runtime-arg=--pci-device=$YA_RUNTIME_VM_PCI_DEVICE\"]";
     jq "$_add_extra_arg_query" $_descriptor_path > "$_descriptor_path.tmp" && mv "$_descriptor_path.tmp" "$_descriptor_path";
 }
 
 configure_preset() {
     local _duration_price _cpu_price _preset_cmd
 
-    _duration_price=$(echo "$GLM_PER_HOUR / 3600.0 / 5.0" | bc -l);
-    _cpu_price=$(echo "$GLM_PER_HOUR / 3600.0" | bc -l);
+    _duration_price=$(echo "$YA_INSTALLER_GLM_PER_HOUR / 3600.0 / 5.0" | bc -l);
+    _cpu_price=$(echo "$YA_INSTALLER_GLM_PER_HOUR / 3600.0" | bc -l);
 
     if [ $(preset_exists) == "true" ]; then
         _preset_cmd="update --name $YA_INSTALLER_RUNTIME_ID";
@@ -105,7 +105,7 @@ configure_preset() {
         --no-interactive \
         --exe-unit $YA_INSTALLER_RUNTIME_ID \
         --pricing linear \
-        --price Duration=$_duration_price CPU=$_cpu_price "Init price"=$INIT_PRICE;
+        --price Duration=$_duration_price CPU=$_cpu_price "Init price"=$YA_INSTALLER_INIT_PRICE;
 }
 
 download_jq() {
@@ -526,8 +526,8 @@ main() {
     fi
 
     # Select GPU
-    if [ "$PCI_DEVICE" == "NULL" ]; then
-        PCI_DEVICE=$(select_gpu_compatible)
+    if [ "$YA_RUNTIME_VM_PCI_DEVICE" == "NULL" ]; then
+        YA_RUNTIME_VM_PCI_DEVICE=$(select_gpu_compatible)
     fi
     
     # Init PATH

@@ -12,9 +12,11 @@ If still in doubt please refer to Disclaimer, User Interaction Guidelines and Pr
 
 ## Installation
 
-Export GPU identifier in BDF (Bus Device Function) format as `PCI_DEVICE` environment variable and run installation script.
+Export GPU's BDF[^1] (Bus Device Function) as the `YA_RUNTIME_VM_PCI_DEVICE` environment variable (replace `_BDF_` with correct value). Then run installation script:
 
 ```bash
-export PCI_DEVICE=_BDF_
+export YA_RUNTIME_VM_PCI_DEVICE="_BDF_"
 curl -sSf https://github.com/golemfactory/ya-runtime-vm-nvidia/releases/latest/install.sh | bash -
 ```
+
+[^1]: BDF is the first column of `lspci` command output. Use default representation of 3 colon separated hexadecimal numbers.
