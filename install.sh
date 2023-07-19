@@ -16,6 +16,8 @@ INIT_PRICE=${INIT_PRICE:-0}
 YA_INSTALLER_DATA=${YA_INSTALLER_DATA:-$HOME/.local/share/ya-installer}
 YA_INSTALLER_LIB=${YA_INSTALLER_LIB:-$HOME/.local/lib/yagna}
 
+YA_MINIMAL_GOLEM_VERSION=0.13.0-rc7
+
 # Runtime tools #######################################################################################################
 
 download_vm_gpu() {
@@ -402,9 +404,96 @@ display_bad_isolation()
 	dialog --stdout --title "GPU bad isolation" --msgbox "\n$msg\n\nTry changing your GPU PCIe slot." 13 130
 }
 
+compare_numeric_versions() {
+    local _version_1 _version_2
+    _version_1="$1"
+    _version_2="$2"
+    if (( _version_1 > _version_2 )); then
+        return 0  # True (greater)
+    elif (( _version_1 < _version_2 )); then
+        return 1  # False (less)
+    else
+        return 2  # Equal
+    fi
+}
+
+compare_semver() {
+    local _version_1 _version_2
+    _version_1="$1"
+    _version_2="$2"
+
+    local _major_1 _minor_1 _patch_1
+    local _major_2 _minor_2 _patch_2
+    _major_1=$(echo "$_version_1" | cut -d '.' -f 1)
+
+    _major_2=$(echo "$_version_2" | cut -d '.' -f 1)
+
+    compare_numeric_versions "$_major_1" "$_major_2"
+    local major_result=$?
+    if [ "$major_result" -eq 0 ]; then
+        return 0 # (greater)
+    elif [ "$major_result" -eq 1 ]; then
+        return 1  # (less)
+    fi
+
+    _minor_1=$(echo "$_version_1" | cut -d '.' -f 2)
+    _minor_2=$(echo "$_version_2" | cut -d '.' -f 2)
+
+    compare_numeric_versions "$_minor_1" "$_minor_2"
+    local minor_result=$?
+    if [ "$minor_result" -eq 0 ]; then
+        return 0 # (greater)
+    elif [ "$minor_result" -eq 1 ]; then
+        return 1 # (less)
+    fi
+
+    _patch_1=$(echo "$_version_1" | cut -d '.' -f 3)
+    _patch_2=$(echo "$_version_2" | cut -d '.' -f 3)
+
+    compare_numeric_versions "$_patch_1" "$_patch_2"
+    local patch_result=$?
+    if [ "$patch_result" -eq 0 ]; then
+        return 0 # (greater)
+    elif [ "$patch_result" -eq 1 ]; then
+        return 1 # (less)
+    fi
+
+    local _rc_1 _rc_2
+    _rc_1=""
+    if [[ "$_version_1" =~ (.*)-(.*) ]]; then
+        _version_1="${BASH_REMATCH[1]}"
+        _rc_1="${BASH_REMATCH[2]}"
+    fi
+
+    _rc_2=""
+    if [[ "$_version_2" =~ (.*)-(.*) ]]; then
+        _version_2="${BASH_REMATCH[1]}"
+        _rc_2="${BASH_REMATCH[2]}"
+    fi
+
+    if [ -n "$_rc_1" ] && [ -z "$_rc_2" ]; then
+        return 0  # (greater)
+    elif [ -z "$_rc_1" ] && [ -n "$_rc_2" ]; then
+        return 1  # (less)
+    elif [ -n "$_rc_1" ] && [ -n "$_rc_2" ]; then
+        if [[ "$_rc_1" < "$_rc_2" ]]; then
+            return 1 # (less)
+        elif [[ "$_rc_1" > "$_rc_2" ]]; then
+            return 0 # (greater)
+        fi
+    fi
+
+    return 2 # (equal)
+}
+
+golem_version() {
+    echo "$(ya-provider --version | cut -d ' ' -f 2)"
+}
+
 # Main ################################################################################################################
 
 main() {
+    need_cmd ya-provider
     need_cmd ya-provider
     need_cmd uname
     need_cmd chmod
@@ -412,12 +501,18 @@ main() {
     need_cmd mv
     need_cmd bc
 
-    local _os_type _download_dir _runtime_descriptor _bin _gpu
+    local _os_type _download_dir _runtime_descriptor _bin _gpu _golem_version
+
+    _golem_version=$(golem_version);
+    if [ $(compare_semver $YA_MINIMAL_GOLEM_VERSION $_golem_version) == 0 ]; then
+        dialog --stderr --title "Error" --msgbox "Unsupported Golem version $_golem_version.\nSupported $YA_MINIMAL_GOLEM_VERSION or later." 6 50
+        clear_exit;
+    fi
 
     # Check OS
     _os_type="$(detect_dist)"
     if [ "$_os_type" != "linux" ]; then
-        dialog --stdout --title "Error" --msgbox "\nIncompatible OS: $_os_type" 6 50
+        dialog --stderr --title "Error" --msgbox "Incompatible OS: $_os_type" 6 50
         clear_exit;
     fi
 
