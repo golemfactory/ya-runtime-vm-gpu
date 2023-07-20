@@ -20,3 +20,16 @@ curl -sSf https://github.com/golemfactory/ya-runtime-vm-nvidia/releases/latest/i
 ```
 
 [^1]: BDF is the first column of `lspci` command output. Use default representation of 3 colon separated hexadecimal numbers.
+
+Optional environment variables to adjust installation (with default values)
+
+```bash
+# Name pf the new runtime and preset
+YA_INSTALLER_RUNTIME_ID=vm-nvidia
+# Default price for the preset setup
+YA_INSTALLER_GLM_PER_HOUR=0.025
+# Default init price for the preset setup
+YA_INSTALLER_INIT_PRICE=0
+# Default location of provider config directory
+DATA_DIR=~/.local/share/ya-provider
+```
