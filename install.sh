@@ -44,7 +44,6 @@ install_vm_gpu() {
 
     # remove old descriptor and runtime binaries
     for _file in $(ls "$_src"); do
-        echo "Removing: $_plugins_dir/$_file";
         rm -rf "$_plugins_dir/$_file"
     done
 
@@ -111,6 +110,8 @@ configure_preset() {
         --exe-unit $YA_INSTALLER_RUNTIME_ID \
         --pricing linear \
         --price Duration=$_duration_price CPU=$_cpu_price "Init price"=$YA_INSTALLER_INIT_PRICE;
+
+    ya-provider preset activate $YA_INSTALLER_RUNTIME_ID
 }
 
 download_jq() {
