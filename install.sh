@@ -27,7 +27,7 @@ download_vm_gpu() {
     test -d "$YA_INSTALLER_DATA/bundles" || mkdir -p "$YA_INSTALLER_DATA/bundles"
 
     _url="https://github.com/golemfactory/${YA_INSTALLER_RUNTIME_REPO_NAME}/releases/download/${YA_INSTALLER_RUNTIME_VER}/${YA_INSTALLER_RUNTIME_REPO_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}.tar.gz"
-    _dl_start "vm runtime" "$YA_INSTALLER_RUNTIME_VER"
+    _dl_start "ya-runtime-vm-nvidia" "$YA_INSTALLER_RUNTIME_VER"
     (downloader "$_url" - | tar -C "$YA_INSTALLER_DATA/bundles" -xz -f -) || err "failed to download $_url"
     _dl_end
     echo -n "$YA_INSTALLER_DATA/bundles/${YA_INSTALLER_RUNTIME_REPO_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}"
@@ -42,13 +42,16 @@ install_vm_gpu() {
     _plugins_dir="$YA_INSTALLER_LIB/plugins"
     mkdir -p "$_plugins_dir"
 
-    cd "$_plugins_dir"
+    # remove old descriptor and runtime binaries
+    for _file in $(ls "$_src"); do
+        echo "Removing: $_plugins_dir/$_file";
+        rm -rf "$_plugins_dir/$_file"
+    done
 
     if [ $(runtime_exists) == "true" ]; then
         echo "Runtime with name \"$YA_INSTALLER_RUNTIME_ID\" already exists. Aborting.";
         exit 1;
     fi
-    # TODO also check file names against name collision
     
     cp -r "$_src"/* "$_plugins_dir/"
 
@@ -63,6 +66,7 @@ preset_exists() {
     provider_entry_exists "preset"
 }
 
+# Checks if provided entry (exe-unit or preset) with name $YA_INSTALLER_RUNTIME_ID exists.
 provider_entry_exists() {
     local _provider_cmd _new_runtime
 
