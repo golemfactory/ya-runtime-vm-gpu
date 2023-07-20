@@ -16,7 +16,7 @@ YA_INSTALLER_INIT_PRICE=${YA_INSTALLER_INIT_PRICE:-0}
 YA_INSTALLER_DATA=${YA_INSTALLER_DATA:-$HOME/.local/share/ya-installer}
 YA_INSTALLER_LIB=${YA_INSTALLER_LIB:-$HOME/.local/lib/yagna}
 
-YA_MINIMAL_GOLEM_VERSION=0.13.0-rc7
+YA_MINIMAL_GOLEM_VERSION=0.13.0-rc9 
 
 # Runtime tools #######################################################################################################
 
