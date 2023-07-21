@@ -19,7 +19,7 @@ export YA_RUNTIME_VM_PCI_DEVICE="_BDF_"
 curl -sSf https://github.com/golemfactory/ya-runtime-vm-nvidia/releases/latest/install.sh | bash -
 ```
 
-[^1]: BDF is the first column of `lspci` command output. Use default representation of 3 colon separated hexadecimal numbers.
+[^1]: BDF is the first column of `lspci` command output. Use printed by `lspci` default representation of colon separated hexadecimal numbers.
 
 Optional environment variables to adjust installation (with default values)
 

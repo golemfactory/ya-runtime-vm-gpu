@@ -500,7 +500,6 @@ golem_version() {
 
 main() {
     need_cmd ya-provider
-    need_cmd ya-provider
     need_cmd uname
     need_cmd chmod
     need_cmd mkdir

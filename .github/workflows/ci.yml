@@ -103,9 +103,7 @@ jobs:
       gvmkit-build_dir: gvmkit-build
       gvmkit-build_archive: gvmkit-build-x86_64-unknown-linux-gnu.tar.gz
       self-test-img_tag: self-test
-    defaults:
-      run:
-        working-directory: self_test_img
+      rust_stable: 1.70.0
 
     steps:
       - uses: actions/checkout@v3
@@ -150,6 +148,7 @@ jobs:
       - name: Build Docker image for GPU
         uses: docker/build-push-action@v4
         with:
+          context: self_test_img
           push: false
           tags: ${{ env.self-test-img_tag }}
 
@@ -198,16 +197,6 @@ jobs:
           tarBall: false
           zipBall: false
 
-      - name: Download self-test image
-        uses: robinraju/release-downloader@v1.8
-        with:
-          repository: ${{ env.self-test-img_repository }}
-          tag: ${{ env.self-test-img_tag }}
-          fileName: self-test-gpu.gvmi
-          out-file-path: .
-          tarBall: false
-          zipBall: false
-
       - uses: actions/download-artifact@v2
         with:
           name: qemu
@@ -231,6 +220,7 @@ jobs:
           RUNTIME_VM_VERSION: ${{ env.runtime-vm_version }}
           OS_NAME: ${{ env.os_name }}
           VM_NAME: ${{ env.vm_name }}
+          SELF_TEST_IMG: ${{ env.self-test-img_gvmi }}
         run: |
           TAG_NAME="${GITHUB_REF##*/}"
           TOP_DIR_NAME="${VM_NAME}-${OS_NAME}-${TAG_NAME}"
@@ -239,10 +229,10 @@ jobs:
 
           mkdir -p ${TARGET_DIR}
           SRC_DIR=ya-runtime-vm-${OS_NAME}-${RUNTIME_VM_VERSION}/ya-runtime-vm
-          rsync -av --exclude='vmrt' --exclude='self-test.gvmi' --exclude='vmlinuz-virt' ${SRC_DIR}/runtime ${TARGET_DIR}
+          rsync -av --exclude="vmrt" --exclude="${SELF_TEST_IMG}" --exclude='vmlinuz-virt' ${SRC_DIR}/runtime ${TARGET_DIR}
           cp ${SRC_DIR}/ya-runtime-vm ${TARGET_DIR}/${VM_NAME}
 
-          cp  self_test_img/${self-test-img_gvmi}             $TARGET_DIR/runtime/${self-test-img_gvmi} 
+          cp self_test_img/${SELF_TEST_IMG}             $TARGET_DIR/runtime/${SELF_TEST_IMG}
           cp golem_nvidia_base/vmlinuz-virt $TARGET_DIR/runtime/
           cp qemu/build/*                   $TARGET_DIR/runtime/
 
