@@ -47,7 +47,6 @@ Section "Device"
     Identifier     "Device0"
     Driver         "nvidia"
     VendorName     "NVIDIA Corporation"
-    #BusID "PCI:6:0:0"
     Option "AllowEmptyInitialConfiguration"
 	Option "AllowIndirectGLXProtocol" "1"
 EndSection
@@ -65,4 +64,3 @@ Section "Screen"
     EndSubSection
 	Option "AllowIndirectGLXProtocol" "1"
 EndSection
-

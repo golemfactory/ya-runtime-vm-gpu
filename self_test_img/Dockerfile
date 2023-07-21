@@ -6,7 +6,8 @@ WORKDIR /data
 COPY . .
 RUN cargo install --path . --target x86_64-unknown-linux-musl
 
-FROM ghcr.io/golemfactory/golem_nvidia_base:0.1.0-rc30
+# CI tags currently build image as latest
+FROM ghcr.io/golemfactory/golem-nvidia-base:latest
 VOLUME [ "/mnt/out" ]
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update
