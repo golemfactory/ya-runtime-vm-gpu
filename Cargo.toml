@@ -1,0 +1,4 @@
+[workspace]
+members = [
+    "self_test_img"
+]
