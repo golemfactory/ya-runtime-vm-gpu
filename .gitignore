@@ -1,3 +1,4 @@
 /golem_nvidia_base/vmlinuz-virt
 /qemu/build
 self_test_img/target/
+target/
