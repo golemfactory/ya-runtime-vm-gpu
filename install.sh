@@ -5,16 +5,18 @@ set -u
 
 YA_INSTALLER_RUNTIME_VER=${YA_INSTALLER_RUNTIME_VER:-__TAG_NAME__}
 YA_INSTALLER_RUNTIME_REPO_NAME="ya-runtime-vm-nvidia"
-YA_INSTALLER_RUNTIME_ID="vm-nvidia"
+YA_INSTALLER_RUNTIME_ID=${YA_INSTALLER_RUNTIME_ID:-vm-nvidia}
 YA_INSTALLER_RUNTIME_DESCRIPTOR="${YA_INSTALLER_RUNTIME_REPO_NAME}.json"
 
-PCI_DEVICE=${PCI_DEVICE:-NULL}
+YA_RUNTIME_VM_PCI_DEVICE=${YA_RUNTIME_VM_PCI_DEVICE:-NULL}
 
-GLM_PER_HOUR=${GLM_PER_HOUR:-0.025}
-INIT_PRICE=${INIT_PRICE:-0}
+YA_INSTALLER_GLM_PER_HOUR=${YA_INSTALLER_GLM_PER_HOUR:-0.025}
+YA_INSTALLER_INIT_PRICE=${YA_INSTALLER_INIT_PRICE:-0}
 
 YA_INSTALLER_DATA=${YA_INSTALLER_DATA:-$HOME/.local/share/ya-installer}
 YA_INSTALLER_LIB=${YA_INSTALLER_LIB:-$HOME/.local/lib/yagna}
+
+YA_MINIMAL_GOLEM_VERSION=0.13.0-rc9 
 
 # Runtime tools #######################################################################################################
 
@@ -25,7 +27,7 @@ download_vm_gpu() {
     test -d "$YA_INSTALLER_DATA/bundles" || mkdir -p "$YA_INSTALLER_DATA/bundles"
 
     _url="https://github.com/golemfactory/${YA_INSTALLER_RUNTIME_REPO_NAME}/releases/download/${YA_INSTALLER_RUNTIME_VER}/${YA_INSTALLER_RUNTIME_REPO_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}.tar.gz"
-    _dl_start "vm runtime" "$YA_INSTALLER_RUNTIME_VER"
+    _dl_start "ya-runtime-vm-nvidia" "$YA_INSTALLER_RUNTIME_VER"
     (downloader "$_url" - | tar -C "$YA_INSTALLER_DATA/bundles" -xz -f -) || err "failed to download $_url"
     _dl_end
     echo -n "$YA_INSTALLER_DATA/bundles/${YA_INSTALLER_RUNTIME_REPO_NAME}-${_ostype}-${YA_INSTALLER_RUNTIME_VER}"
@@ -40,13 +42,15 @@ install_vm_gpu() {
     _plugins_dir="$YA_INSTALLER_LIB/plugins"
     mkdir -p "$_plugins_dir"
 
-    cd "$_plugins_dir"
+    # remove old descriptor and runtime binaries
+    for _file in $(ls "$_src"); do
+        rm -rf "$_plugins_dir/$_file"
+    done
 
     if [ $(runtime_exists) == "true" ]; then
         echo "Runtime with name \"$YA_INSTALLER_RUNTIME_ID\" already exists. Aborting.";
         exit 1;
     fi
-    # TODO also check file names against name collision
     
     cp -r "$_src"/* "$_plugins_dir/"
 
@@ -61,6 +65,7 @@ preset_exists() {
     provider_entry_exists "preset"
 }
 
+# Checks if provided entry (exe-unit or preset) with name $YA_INSTALLER_RUNTIME_ID exists.
 provider_entry_exists() {
     local _provider_cmd _new_runtime
 
@@ -83,15 +88,16 @@ configure_runtime() {
     _descriptor_path="$1"
     _set_name_query=".[0].name = \"$YA_INSTALLER_RUNTIME_ID\"";
     jq "$_set_name_query" $_descriptor_path > "$_descriptor_path.tmp" && mv "$_descriptor_path.tmp" "$_descriptor_path";
-    _add_extra_arg_query=".[0][\"extra-args\"] += [\"--runtime-arg=--pci-device=$PCI_DEVICE\"]";
+    _add_extra_arg_query=".[0][\"extra-args\"] += [\"--runtime-arg=--pci-device=$YA_RUNTIME_VM_PCI_DEVICE\"]";
     jq "$_add_extra_arg_query" $_descriptor_path > "$_descriptor_path.tmp" && mv "$_descriptor_path.tmp" "$_descriptor_path";
 }
 
 configure_preset() {
     local _duration_price _cpu_price _preset_cmd
 
-    _duration_price=$(echo "$GLM_PER_HOUR / 3600.0 / 5.0" | bc -l);
-    _cpu_price=$(echo "$GLM_PER_HOUR / 3600.0" | bc -l);
+    # based on https://github.com/golemfactory/yagna/blob/pre-rel-v0.13.0-raw-rc8/golem_cli/src/setup.rs#L139
+    _duration_price=$(echo "$YA_INSTALLER_GLM_PER_HOUR / 3600.0 / 5.0" | bc -l);
+    _cpu_price=$(echo "$YA_INSTALLER_GLM_PER_HOUR / 3600.0" | bc -l);
 
     if [ $(preset_exists) == "true" ]; then
         _preset_cmd="update --name $YA_INSTALLER_RUNTIME_ID";
@@ -103,7 +109,9 @@ configure_preset() {
         --no-interactive \
         --exe-unit $YA_INSTALLER_RUNTIME_ID \
         --pricing linear \
-        --price Duration=$_duration_price CPU=$_cpu_price "Init price"=$INIT_PRICE;
+        --price Duration=$_duration_price CPU=$_cpu_price "Init price"=$YA_INSTALLER_INIT_PRICE;
+
+    ya-provider preset activate $YA_INSTALLER_RUNTIME_ID
 }
 
 download_jq() {
@@ -402,6 +410,92 @@ display_bad_isolation()
 	dialog --stdout --title "GPU bad isolation" --msgbox "\n$msg\n\nTry changing your GPU PCIe slot." 13 130
 }
 
+compare_numeric_versions() {
+    local _version_1 _version_2
+    _version_1="$1"
+    _version_2="$2"
+    if (( _version_1 > _version_2 )); then
+        return 0  # True (greater)
+    elif (( _version_1 < _version_2 )); then
+        return 1  # False (less)
+    else
+        return 2  # Equal
+    fi
+}
+
+compare_semver() {
+    local _version_1 _version_2
+    _version_1="$1"
+    _version_2="$2"
+
+    local _major_1 _minor_1 _patch_1
+    local _major_2 _minor_2 _patch_2
+    _major_1=$(echo "$_version_1" | cut -d '.' -f 1)
+
+    _major_2=$(echo "$_version_2" | cut -d '.' -f 1)
+
+    compare_numeric_versions "$_major_1" "$_major_2"
+    local major_result=$?
+    if [ "$major_result" -eq 0 ]; then
+        return 0 # (greater)
+    elif [ "$major_result" -eq 1 ]; then
+        return 1  # (less)
+    fi
+
+    _minor_1=$(echo "$_version_1" | cut -d '.' -f 2)
+    _minor_2=$(echo "$_version_2" | cut -d '.' -f 2)
+
+    compare_numeric_versions "$_minor_1" "$_minor_2"
+    local minor_result=$?
+    if [ "$minor_result" -eq 0 ]; then
+        return 0 # (greater)
+    elif [ "$minor_result" -eq 1 ]; then
+        return 1 # (less)
+    fi
+
+    _patch_1=$(echo "$_version_1" | cut -d '.' -f 3)
+    _patch_2=$(echo "$_version_2" | cut -d '.' -f 3)
+
+    compare_numeric_versions "$_patch_1" "$_patch_2"
+    local patch_result=$?
+    if [ "$patch_result" -eq 0 ]; then
+        return 0 # (greater)
+    elif [ "$patch_result" -eq 1 ]; then
+        return 1 # (less)
+    fi
+
+    local _rc_1 _rc_2
+    _rc_1=""
+    if [[ "$_version_1" =~ (.*)-(.*) ]]; then
+        _version_1="${BASH_REMATCH[1]}"
+        _rc_1="${BASH_REMATCH[2]}"
+    fi
+
+    _rc_2=""
+    if [[ "$_version_2" =~ (.*)-(.*) ]]; then
+        _version_2="${BASH_REMATCH[1]}"
+        _rc_2="${BASH_REMATCH[2]}"
+    fi
+
+    if [ -n "$_rc_1" ] && [ -z "$_rc_2" ]; then
+        return 0  # (greater)
+    elif [ -z "$_rc_1" ] && [ -n "$_rc_2" ]; then
+        return 1  # (less)
+    elif [ -n "$_rc_1" ] && [ -n "$_rc_2" ]; then
+        if [[ "$_rc_1" < "$_rc_2" ]]; then
+            return 1 # (less)
+        elif [[ "$_rc_1" > "$_rc_2" ]]; then
+            return 0 # (greater)
+        fi
+    fi
+
+    return 2 # (equal)
+}
+
+golem_version() {
+    echo "$(ya-provider --version | cut -d ' ' -f 2)"
+}
+
 # Main ################################################################################################################
 
 main() {
@@ -412,12 +506,18 @@ main() {
     need_cmd mv
     need_cmd bc
 
-    local _os_type _download_dir _runtime_descriptor _bin _gpu
+    local _os_type _download_dir _runtime_descriptor _bin _gpu _golem_version
+
+    _golem_version=$(golem_version);
+    if [ $(compare_semver $YA_MINIMAL_GOLEM_VERSION $_golem_version) == 0 ]; then
+        dialog --stderr --title "Error" --msgbox "Unsupported Golem version $_golem_version.\nSupported $YA_MINIMAL_GOLEM_VERSION or later." 6 50
+        clear_exit;
+    fi
 
     # Check OS
     _os_type="$(detect_dist)"
     if [ "$_os_type" != "linux" ]; then
-        dialog --stdout --title "Error" --msgbox "\nIncompatible OS: $_os_type" 6 50
+        dialog --stderr --title "Error" --msgbox "Incompatible OS: $_os_type" 6 50
         clear_exit;
     fi
 
@@ -431,8 +531,8 @@ main() {
     fi
 
     # Select GPU
-    if [ "$PCI_DEVICE" == "NULL" ]; then
-        PCI_DEVICE=$(select_gpu_compatible)
+    if [ "$YA_RUNTIME_VM_PCI_DEVICE" == "NULL" ]; then
+        YA_RUNTIME_VM_PCI_DEVICE=$(select_gpu_compatible)
     fi
     
     # Init PATH

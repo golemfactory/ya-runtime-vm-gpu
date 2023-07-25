@@ -6,8 +6,7 @@
       "runtime-path": "ya-runtime-vm-nvidia/ya-runtime-vm-nvidia",
       "description": "vm nvidia runtime",
       "extra-args": [ 
-        "--cap-handoff",
-        "--runtime-arg=--test-mem-gib=0.5"
+        "--cap-handoff"
       ]
     }
 ]
