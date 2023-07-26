@@ -532,7 +532,7 @@ main() {
 
     # Select GPU
     if [ "$YA_RUNTIME_VM_PCI_DEVICE" == "NULL" ]; then
-        YA_RUNTIME_VM_PCI_DEVICE=$(select_gpu_compatible)
+        YA_RUNTIME_VM_PCI_DEVICE=$(select_gpu_compatible) || err "Failed to select GPU."
     fi
     
     # Init PATH
