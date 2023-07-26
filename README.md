@@ -1,4 +1,4 @@
-# ya-runtime-vm-gpu
+# ya-runtime-vm-nvidia
 
 $${\color{red}WARNING! }$$
 
@@ -36,6 +36,6 @@ DATA_DIR=~/.local/share/ya-provider
 
 ## Apps
 
-Apps meant to be executed on `ya-runtime-vm-gpu` should use [golem-nvidia-base](golem_nvidia_base/README.md) as a base image.
+Apps meant to be executed on `ya-runtime-vm-nvidia` should use [golem-nvidia-base](golem_nvidia_base/README.md) as a base image.
 
 In order to match with GPU offering provider an app needs to list `!exp:gpu` among its required [capabilities](https://yapapi.readthedocs.io/en/latest/api.html#module-yapapi.payload.vm).
