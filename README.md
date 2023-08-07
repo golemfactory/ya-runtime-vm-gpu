@@ -1,6 +1,6 @@
 # ya-runtime-vm-nvidia
 
-$${\color{red}WARNING! }$$
+$${\color{red}WARNING! }$$ [here
 
 Please be aware that this experimental runtime's (`ya-runtime-vm-nvidia`) goal is to provide GPU support to Golem Network. If configured correctly it will make your GPU available as a resource on Golem Network via PCI Passthrough.
 
@@ -22,6 +22,8 @@ Running command can take a few minutes, because installtion script downloads sel
 
 
 [^1]: GPU BDFs can be found in the first column of `lspci` command output. Use printed by `lspci` default representation of colon separated hexadecimal numbers.
+
+## Configuration (optional)
 
 Optional environment variables to adjust installation (with default values)
 
