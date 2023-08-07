@@ -18,6 +18,8 @@ Export GPU's BDF[^1] (Bus Device Function) as the `YA_RUNTIME_VM_PCI_DEVICE` env
 export YA_RUNTIME_VM_PCI_DEVICE="_BDF_"
 curl -sSLf https://github.com/golemfactory/ya-runtime-vm-nvidia/releases/latest/download/install.sh | bash -
 ```
+Running command can take a few minutes, because installtion script downloads self-test image that is pretty large.
+
 
 [^1]: GPU BDFs can be found in the first column of `lspci` command output. Use printed by `lspci` default representation of colon separated hexadecimal numbers.
 
