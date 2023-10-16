@@ -1,4 +1,4 @@
-FROM ubuntu:focal-20220801
+FROM ubuntu:yammy-20231011
 
 ARG DEBIAN_FRONTEND=noninteractive
 
