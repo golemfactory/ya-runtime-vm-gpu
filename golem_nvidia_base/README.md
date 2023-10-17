@@ -5,7 +5,7 @@ Docker base image for Golem applications using Nvidia GPU.
 Depending on usecase application might need to start Xorg:
 
 ```bash
-Xorg vt10 :0 -sharevts &
+Xorg vt10 :0 &
 export DISPLAY=:0
 ```
 
