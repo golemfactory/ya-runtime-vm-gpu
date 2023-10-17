@@ -175,6 +175,18 @@ jobs:
           path: |
             ${{ env.self-test-img_gvmi }}
 
+      - name: Build .deb
+        id: deb
+        run: |
+          chmod +x debian/build-deb.sh
+          ./debian/build-deb.sh ${{ github.ref }} ${{ env.self-test-img_gvmi }}
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: deb
+          path: |
+            ${{ steps.deb.outputs.deb }}
+
   release:
     name: Release
     needs:
@@ -211,6 +223,11 @@ jobs:
         with:
           name: self_test_img
           path: self_test_img/
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: deb
+          path: dist/
 
       - name: Pack
         id: pack
