@@ -1,6 +1,0 @@
-#! /bin/bash
-
-V=$(docker create $1) || exit 1
-docker cp "$V:$2" "$3"
-docker rm $V
-

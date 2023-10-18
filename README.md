@@ -12,31 +12,9 @@ If still in doubt please refer to Disclaimer, User Interaction Guidelines and Pr
 
 ## Installation
 
-Export GPU's BDF[^1] (Bus Device Function) as the `YA_RUNTIME_VM_PCI_DEVICE` environment variable (replace `_BDF_` with correct value). Then run installation script:
+Running this provider is supported only via Live USB image.
 
-```bash
-export YA_RUNTIME_VM_PCI_DEVICE="_BDF_"
-curl -sSLf https://github.com/golemfactory/ya-runtime-vm-nvidia/releases/latest/download/install.sh | bash -
-```
-Running command can take a few minutes, because installtion script downloads self-test image that is pretty large.
-
-
-[^1]: GPU BDFs can be found in the first column of `lspci` command output. Use printed by `lspci` default representation of colon separated hexadecimal numbers.
-
-## Configuration (optional)
-
-Optional environment variables to adjust installation (with default values)
-
-```bash
-# Name pf the new runtime and preset
-YA_INSTALLER_RUNTIME_ID=vm-nvidia
-# Default price for the preset setup
-YA_INSTALLER_GLM_PER_HOUR=0.025
-# Default init price for the preset setup
-YA_INSTALLER_INIT_PRICE=0
-# Default location of provider config directory
-DATA_DIR=~/.local/share/ya-provider
-```
+TODO: link
 
 ## Apps
 
