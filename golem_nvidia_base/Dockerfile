@@ -1,4 +1,4 @@
-FROM ubuntu:yammy-20231011
+FROM ubuntu:jammy-20231004
 
 ARG DEBIAN_FRONTEND=noninteractive
 
