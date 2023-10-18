@@ -2,6 +2,6 @@ Package: ya-runtime-vm-nvidia
 Version: #version
 Maintainer: Golem Factory <contact@golem.network>
 Architecture: all
-Depends: ya-runtime-vm
+Depends: ya-runtime-vm, golem-nvidia-kernel
 Priority: standard
 Description: VM + Nvidia runtime for Yagna.

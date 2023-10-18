@@ -7,7 +7,7 @@ on:
 
 env:
   runtime-vm_repository: golemfactory/ya-runtime-vm
-  runtime-vm_version: pre-rel-v0.4.0-rc2
+  runtime-vm_version: pre-rel-v0.4.0-ITL-rc15
   vm_name: ya-runtime-vm-nvidia
   os_name: linux
   organisation: golemfactory
@@ -138,11 +138,22 @@ jobs:
           path: |
             ${{ env.self-test-img_gvmi }}
 
+      - name: Download ya-runtime-vm
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: ${{ env.runtime-vm_repository }}
+          tag: ${{ env.runtime-vm_version }}
+          fileName: ya-runtime-vm-${{ env.os_name }}-${{ env.runtime-vm_version }}.tar.gz
+          extract: true
+          out-file-path: .
+          tarBall: false
+          zipBall: false
+
       - name: Build .deb
         id: deb
         run: |
           chmod +x debian/build-deb.sh
-          ./debian/build-deb.sh ${{ github.ref }} ${{ env.self-test-img_gvmi }}
+          ./debian/build-deb.sh ${{ github.ref }} ${{ env.self-test-img_gvmi }} ya-runtime-vm-${{ env.os_name }}-${{ env.runtime-vm_version }}/ya-runtime-vm
 
       - uses: actions/upload-artifact@v2
         with:
