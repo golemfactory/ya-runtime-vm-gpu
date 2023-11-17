@@ -12,6 +12,8 @@ Section "ServerLayout"
 EndSection
 
 Section "Files"
+    ModulePath "/usr/lib/x86_64-linux-gnu/nvidia/xorg"
+    ModulePath "/usr/lib/xorg/modules"
 EndSection
 
 Section "InputDevice"
