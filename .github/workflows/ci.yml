@@ -7,7 +7,7 @@ on:
 
 env:
   runtime-vm_repository: golemfactory/ya-runtime-vm
-  runtime-vm_version: pre-rel-v0.4.0-rc2
+  runtime-vm_version: pre-rel-v0.4.0-ITL-rc21
   vm_name: ya-runtime-vm-nvidia
   os_name: linux
   organisation: golemfactory
@@ -55,43 +55,6 @@ jobs:
             ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:${{ startsWith(steps.tag_name.outputs.TAG, 'pre-rel-') && 'beta' || 'stable' }}
             ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:latest
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=${{ env.docker-img_description }}
-
-      - name: Copy
-        run: |
-          cd golem_nvidia_base
-          make vmlinuz-virt
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: golem_nvidia_base
-          path: |
-            golem_nvidia_base/vmlinuz-virt
-
-  build-qemu:
-    name: Build qemu
-    runs-on: ubuntu-20.04
-
-    steps:
-      - name: Install Musl
-        run: sudo apt-get install -y musl-tools musl
-
-      - uses: actions/checkout@v1
-        with:
-          submodules: "recursive"
-
-      - name: Make qemu
-        run: |
-          musl-gcc -v
-          git submodule init
-          git submodule update
-          cd qemu
-          make
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: qemu
-          path: |
-            qemu/build/*
 
   build-self-test-img:
     name: Build self test img
@@ -175,29 +138,6 @@ jobs:
           path: |
             ${{ env.self-test-img_gvmi }}
 
-      - name: Build .deb
-        id: deb
-        run: |
-          chmod +x debian/build-deb.sh
-          ./debian/build-deb.sh ${{ github.ref }} ${{ env.self-test-img_gvmi }}
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: deb
-          path: |
-            ${{ steps.deb.outputs.deb }}
-
-  release:
-    name: Release
-    needs:
-      - build-golem_nvidia_base
-      - build-qemu
-      - build-self-test-img
-    runs-on: ubuntu-20.04
-
-    steps:
-      - uses: actions/checkout@v3
-
       - name: Download ya-runtime-vm
         uses: robinraju/release-downloader@v1.8
         with:
@@ -209,62 +149,31 @@ jobs:
           tarBall: false
           zipBall: false
 
-      - uses: actions/download-artifact@v2
-        with:
-          name: qemu
-          path: qemu/build/
+      - name: Build .deb
+        id: deb
+        run: |
+          chmod +x debian/build-deb.sh
+          ./debian/build-deb.sh ${{ github.ref }} ${{ env.self-test-img_gvmi }} ya-runtime-vm-${{ env.os_name }}-${{ env.runtime-vm_version }}/ya-runtime-vm
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/upload-artifact@v2
         with:
-          name: golem_nvidia_base
-          path: golem_nvidia_base/
+          name: deb
+          path: |
+            ${{ steps.deb.outputs.deb }}
 
-      - uses: actions/download-artifact@v2
-        with:
-          name: self_test_img
-          path: self_test_img/
+  release:
+    name: Release
+    needs:
+      - build-self-test-img
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v3
 
       - uses: actions/download-artifact@v2
         with:
           name: deb
           path: dist/
-
-      - name: Pack
-        id: pack
-        shell: bash
-        env:
-          GITHUB_REF: ${{ github.ref }}
-          RUNTIME_VM_VERSION: ${{ env.runtime-vm_version }}
-          OS_NAME: ${{ env.os_name }}
-          VM_NAME: ${{ env.vm_name }}
-          SELF_TEST_IMG: ${{ env.self-test-img_gvmi }}
-        run: |
-          TAG_NAME="${GITHUB_REF##*/}"
-          TOP_DIR_NAME="${VM_NAME}-${OS_NAME}-${TAG_NAME}"
-          TARGET_DIR=build/${TOP_DIR_NAME}/${VM_NAME}
-          set -x
-
-          mkdir -p ${TARGET_DIR}
-          SRC_DIR=ya-runtime-vm-${OS_NAME}-${RUNTIME_VM_VERSION}/ya-runtime-vm
-          rsync -av --exclude="vmrt" --exclude="${SELF_TEST_IMG}" --exclude="vmlinuz-virt" ${SRC_DIR}/runtime ${TARGET_DIR}
-          cp ${SRC_DIR}/ya-runtime-vm ${TARGET_DIR}/${VM_NAME}
-
-          cp self_test_img/${SELF_TEST_IMG}             $TARGET_DIR/runtime/${SELF_TEST_IMG}
-          cp golem_nvidia_base/vmlinuz-virt $TARGET_DIR/runtime/
-          cp qemu/build/*                   $TARGET_DIR/runtime/
-
-          chmod +x ${TARGET_DIR}/runtime/vmrt
-          chmod +x ${TARGET_DIR}/${VM_NAME}
-
-          RUNTIME_DESC=build/${TOP_DIR_NAME}/${VM_NAME}.json
-          VERSION=${TAG_NAME#v}
-          VERSION=${VERSION#pre-rel-v}
-          cp conf/${VM_NAME}.json         ${RUNTIME_DESC}
-          sed -i "s/__VERSION__/${VERSION}/"  ${RUNTIME_DESC}
-
-          mkdir -p dist
-          cp install.sh dist/install.sh && sed -i "s/__TAG_NAME__/${TAG_NAME}/" dist/install.sh
-          (cd build && tar czvf ../dist/"${TOP_DIR_NAME}.tar.gz" "${TOP_DIR_NAME}")
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/')
