@@ -12,9 +12,8 @@ If still in doubt please refer to Disclaimer, User Interaction Guidelines and Pr
 
 ## Installation
 
-Running this provider is supported only via Live USB image.
-
-TODO: link
+Running this provider is supported only via Live USB image:
+https://github.com/golemfactory/golem-gpu-live
 
 ## Apps
 
