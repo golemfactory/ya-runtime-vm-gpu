@@ -5,15 +5,15 @@ on:
       - v*
       - pre-rel-*
 
+
 env:
   runtime-vm_repository: golemfactory/ya-runtime-vm
-  runtime-vm_version: pre-rel-v0.4.0-ITL-rc21
+  runtime-vm_version: pre-rel-v0.4.0-ITL-rc22
   vm_name: ya-runtime-vm-nvidia
   os_name: linux
   organisation: golemfactory
   docker-img_name: golem-nvidia-base
   docker-img_description: Base image with Nvidia drivers for Golem VM images.
-  self-test-img_gvmi: self-test.gvmi
 
 jobs:
   build-golem_nvidia_base:
@@ -56,87 +56,28 @@ jobs:
             ghcr.io/${{ env.organisation }}/${{ env.docker-img_name }}:latest
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=${{ env.docker-img_description }}
 
-  build-self-test-img:
+  build-deb:
     name: Build self test img
     needs:
       - build-golem_nvidia_base
     runs-on: ubuntu-20.04
     env:
-      gvmkit-build_tag: v0.3.13
-      gvmkit-build_dir: gvmkit-build
-      gvmkit-build_archive: gvmkit-build-x86_64-unknown-linux-gnu.tar.gz
-      self-test-img_tag: self-test
-      rust_stable: 1.70.0
+      self-test-img_gvmi: self-test.gvmi
+      self-test-img_tag: v0.2.0a0
+      self-test-img_repository: golemfactory/ya-self-test-img
 
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Rust ${{ env.rust_stable }}
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ env.rust_stable }}
-          components: rustfmt, clippy
-
-      - name: Check lockfile
-        uses: actions-rs/cargo@v1
-        with:
-          command: tree
-          args: --locked
-
-      - name: Check formatting
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-
-      - name: Check clippy lints
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets --all-features --workspace -- -D warnings
-
-      - name: Unit tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace --locked
-
-      - name: 'Login to GitHub Container Registry'
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{github.actor}}
-          password: ${{secrets.GITHUB_TOKEN}}
-
-      - name: Build Docker image for GPU
-        uses: docker/build-push-action@v4
-        with:
-          context: self_test_img
-          push: false
-          tags: ${{ env.self-test-img_tag }}
-
-      - name: Download gvmkit-build
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Download self-test image
         uses: robinraju/release-downloader@v1.8
         with:
-          repository: golemfactory/gvmkit-build-rs
-          tag: ${{ env.gvmkit-build_tag }}
-          fileName: ${{ env.gvmkit-build_archive }}
-          extract: true
-          out-file-path: ${{ env.gvmkit-build_dir }}
+          repository: ${{ env.self-test-img_repository }}
+          tag: ${{ env.self-test-img_tag }}
+          fileName: self-test-gpu.gvmi
+          out-file-path: .
           tarBall: false
           zipBall: false
-
-      - name: Build GVMkit image
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          ${{ env.gvmkit-build_dir }}/gvmkit-build ${{ env.self-test-img_tag }}:latest -o ${{ env.self-test-img_gvmi }}
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: self_test_img
-          path: |
-            ${{ env.self-test-img_gvmi }}
 
       - name: Download ya-runtime-vm
         uses: robinraju/release-downloader@v1.8
@@ -153,6 +94,7 @@ jobs:
         id: deb
         run: |
           chmod +x debian/build-deb.sh
+          mv self-test-gpu.gvmi ${{ env.self-test-img_gvmi }}
           ./debian/build-deb.sh ${{ github.ref }} ${{ env.self-test-img_gvmi }} ya-runtime-vm-${{ env.os_name }}-${{ env.runtime-vm_version }}/ya-runtime-vm
 
       - uses: actions/upload-artifact@v2
@@ -164,7 +106,7 @@ jobs:
   release:
     name: Release
     needs:
-      - build-self-test-img
+      - build-deb
     runs-on: ubuntu-20.04
 
     steps:
